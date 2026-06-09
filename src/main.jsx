@@ -19,7 +19,23 @@ import {
   ShieldCheck,
   UserRoundCheck,
   Workflow,
+  Zap,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+  BarChart,
+  Bar,
+  Cell,
+  RadialBarChart,
+  RadialBar,
+  PolarAngleAxis,
+  Tooltip,
+} from "recharts";
 import "./styles.css";
 
 const layerMeta = {
@@ -211,11 +227,107 @@ const demos = [
   },
 ];
 
+const eventName = (s) => `${s.layer}.${s.label.toLowerCase().replace(/\s+/g, "_")}`;
+const stamp = (i) => `03:14:${String(2 + i * 3).padStart(2, "0")}`;
+
+/* ---- chart data, reactive to sandbox sliders + the current step ---- */
+const OPS_THRESHOLD = 78;
+function opsSeries(v, step) {
+  const pts = [];
+  for (let i = 0; i < 12; i++) {
+    let val = 44 + Math.sin(i / 1.7) * 5 + (i % 2) * 3;
+    if (step >= 2 && i >= 6) val += (i - 5) * (5 + v.reroute * 0.04); // anomaly builds after Alert
+    if (step >= 6 && i >= 9) val -= (v.expedite * 0.3 + v.reroute * 0.25) * (i - 8); // remediation tail
+    pts.push({ t: `T-${11 - i}`, value: Math.max(16, Math.round(val)) });
+  }
+  return pts;
+}
+function optimizerBars(v) {
+  return [
+    { name: "Price", value: Math.round(v.price * 0.95) },
+    { name: "Promo", value: Math.round(v.promo * 0.5) },
+    { name: "Inventory", value: Math.round(60 - Math.abs(v.inventory - 60) * 0.6) },
+  ];
+}
+function kycBars(v) {
+  return [
+    { name: "ID match", value: Math.round(60 + v.strictness * 0.35) },
+    { name: "Sanctions", value: Math.round(10 + (100 - v.risk) * 0.12) },
+    { name: "PEP", value: Math.round(6 + (100 - v.risk) * 0.08) },
+  ];
+}
+
+const tipStyle = {
+  fontFamily: "JetBrains Mono, monospace",
+  fontSize: 11,
+  borderRadius: 8,
+  border: "1px solid #dcdfdd",
+};
+
+function ScreenVisual({ demo, step, sliderState, scenario }) {
+  if (demo.id === "ops") {
+    const data = opsSeries(sliderState, step);
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 8, right: 10, left: -16, bottom: 0 }}>
+          <defs>
+            <linearGradient id="opsFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ff3621" stopOpacity={0.32} />
+              <stop offset="100%" stopColor="#ff3621" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "#8a969b" }} interval={2} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "#8a969b" }} domain={[0, 120]} axisLine={false} tickLine={false} width={34} />
+          <ReferenceLine y={OPS_THRESHOLD} stroke="#c9270f" strokeDasharray="5 4" label={{ value: "SLA-risk threshold", fontSize: 10, fill: "#c9270f", position: "insideTopRight" }} />
+          <Tooltip contentStyle={tipStyle} />
+          <Area type="monotone" dataKey="value" stroke="#ff3621" strokeWidth={2} fill="url(#opsFill)" />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  const isOpt = demo.id === "optimizer";
+  const bars = isOpt ? optimizerBars(sliderState) : kycBars(sliderState);
+  const gaugeValue = isOpt ? scenario.outcome : scenario.risk;
+  const gaugeMax = isOpt ? 250 : 60;
+  const gaugeFill = isOpt ? "#ff3621" : "#2272b4";
+  const gaugeLabel = isOpt ? demo.scenario.labels.outcome : demo.scenario.labels.risk;
+  const barColors = isOpt ? ["#ff3621", "#ff8a76", "#1b3139"] : ["#2272b4", "#00a972", "#445e6b"];
+
+  return (
+    <div className="dual-viz">
+      <div className="viz-gauge">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart innerRadius="64%" outerRadius="100%" data={[{ value: Math.min(gaugeMax, gaugeValue), fill: gaugeFill }]} startAngle={210} endAngle={-30}>
+            <PolarAngleAxis type="number" domain={[0, gaugeMax]} tick={false} />
+            <RadialBar dataKey="value" cornerRadius={9} background={{ fill: "#eceae4" }} />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="gauge-center">
+          <strong>{gaugeValue}</strong>
+          <span>{gaugeLabel}</span>
+        </div>
+      </div>
+      <ResponsiveContainer width="50%" height="100%">
+        <BarChart data={bars} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+          <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#8a969b" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "#8a969b" }} axisLine={false} tickLine={false} width={28} />
+          <Tooltip contentStyle={tipStyle} cursor={{ fill: "rgba(27,49,57,0.05)" }} />
+          <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+            {bars.map((b, i) => <Cell key={b.name} fill={barColors[i % barColors.length]} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function App() {
   const [view, setView] = useState("gallery"); // "gallery" | "detail"
   const [activeDemoId, setActiveDemoId] = useState("ops");
   const [step, setStep] = useState(0); // 0 = idle, 1..N = executed steps
   const [playing, setPlaying] = useState(false);
+  const [trailLayer, setTrailLayer] = useState("all");
   const [archLayer, setArchLayer] = useState("logic");
   const [selectedNode, setSelectedNode] = useState(null);
 
@@ -231,6 +343,7 @@ function App() {
   useEffect(() => {
     setStep(0);
     setPlaying(false);
+    setTrailLayer("all");
     setArchLayer("logic");
     setSelectedNode(null);
     setSliderState(initialSliders);
@@ -255,6 +368,16 @@ function App() {
   const stepMeta = currentStep ? layerMeta[currentStep.layer] : null;
   const recordCount = executed.reduce((n, s) => n + s.writes.length, 0);
   const scenario = demo.scenario.formula(sliderState);
+
+  const firingLayer = currentStep ? currentStep.layer : null;
+  const firedLayers = new Set(executed.map((s) => s.layer));
+  const layerCounts = layerOrder.reduce((acc, l) => {
+    acc[l] = executed.filter((s) => s.layer === l).reduce((n, s) => n + s.writes.length, 0);
+    return acc;
+  }, {});
+  const trail = executed
+    .map((s, i) => ({ ...s, idx: i }))
+    .filter((s) => trailLayer === "all" || s.layer === trailLayer);
 
   const togglePlay = () => {
     if (step >= total) setStep(0);
@@ -410,29 +533,49 @@ function App() {
                 })}
               </div>
 
-              <div className="screen-stage">
+              <div className="screen-chart" key={`${demo.id}-chart`}>
+                <ScreenVisual demo={demo} step={step} sliderState={sliderState} scenario={scenario} />
+              </div>
+
+              <div className={`screen-note ${stepMeta ? stepMeta.colorClass : ""}`}>
                 {currentStep ? (
-                  <div className={`stage-card ${stepMeta.colorClass}`} key={step}>
-                    <div className="stage-top">
-                      <span className="stage-step">Step {step} / {total}</span>
-                      <span className="stage-layer">{stepMeta.label} layer</span>
-                    </div>
-                    <h4 className="stage-headline">{currentStep.label}</h4>
-                    <p className="stage-detail">{currentStep.detail}</p>
-                    <div className="stage-writes">
-                      <span className="stage-writes-label">Writing back</span>
-                      <div className="stage-write-chips">
-                        {currentStep.writes.map((w) => <code key={w}>{w}</code>)}
-                      </div>
-                    </div>
-                  </div>
+                  <>
+                    <span className="screen-note-label">Step {step} / {total} · {currentStep.label}</span>
+                    <p>{currentStep.detail}</p>
+                  </>
                 ) : (
-                  <div className="stage-idle">
-                    <ServerCog size={26} />
-                    <strong>Press Play to run a day in the life</strong>
-                    <span>Each step shows on screen and writes durable records to the lakehouse.</span>
-                  </div>
+                  <>
+                    <span className="screen-note-label">Ready</span>
+                    <p>Press Play, or drag a control below — the screen updates live and each step writes durable records.</p>
+                  </>
                 )}
+              </div>
+
+              <div className="screen-sandbox">
+                <div className="screen-sandbox-head">
+                  <span className="section-label">{demo.scenario.title}</span>
+                  <GitBranch size={14} />
+                </div>
+                <div className="sliders">
+                  {demo.scenario.sliders.map((slider) => (
+                    <label key={slider.key}>
+                      <span>{slider.label}</span>
+                      <strong>{sliderState[slider.key]}{slider.suffix}</strong>
+                      <input
+                        type="range"
+                        min={slider.min}
+                        max={slider.max}
+                        value={sliderState[slider.key]}
+                        onChange={(e) => setSliderState({ ...sliderState, [slider.key]: Number(e.target.value) })}
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="scenario-results">
+                  <div><strong>{scenario.outcome}</strong><span>{demo.scenario.labels.outcome}</span></div>
+                  <div><strong>{scenario.risk}</strong><span>{demo.scenario.labels.risk}</span></div>
+                  <div><strong>{scenario.cost}</strong><span>{demo.scenario.labels.cost}</span></div>
+                </div>
               </div>
 
               <div className="screen-foot">
@@ -460,38 +603,173 @@ function App() {
               </div>
             </div>
           </div>
-
-          <div className="cledger">
-            <div className="cledger-head">
-              <ShieldCheck size={15} />
-              <span className="section-label">Decision ledger</span>
-              <span className="cledger-count">{recordCount} records</span>
-            </div>
-            {executed.length === 0 ? (
-              <div className="cledger-empty">Run the app to fill the ledger.</div>
-            ) : (
-              <div className="cledger-list">
-                {executed.map((s, idx) => (
-                  <div key={`${s.label}-${idx}`} className={`cledger-row ${layerMeta[s.layer].colorClass} ${idx === step - 1 ? "fresh" : ""}`}>
-                    <span className="cl-num">{idx + 1}</span>
-                    <span className="cl-label">{s.label}</span>
-                    <span className="cl-fields">{s.writes.join(" · ")}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </aside>
       </div>
 
-      {/* ---------- Architecture + scenario, for the curious ---------- */}
+      {/* ---------- Day in the life: step-through + command-line trail ---------- */}
+      <details className="arch run-collapse">
+        <summary>
+          <span className="arch-summary-left">
+            <Workflow size={17} />
+            <span>
+              <strong>Day in the life</strong>
+              <small>Step the app through its decision and watch each action break down on the command line</small>
+            </span>
+          </span>
+          <ChevronRight className="arch-chevron" size={18} />
+        </summary>
+
+        <div className="arch-body">
+          <section className="run">
+            <div className="run-header">
+              <div>
+                <span className="section-label">Step-through</span>
+                <h3>Each step writes a durable record</h3>
+              </div>
+              <div className="transport">
+                <button className="primary" onClick={togglePlay}>
+                  {playing ? <Pause size={15} /> : <Play size={15} />} {playing ? "Pause" : "Play"}
+                </button>
+                <button onClick={() => goto(step - 1)} disabled={step === 0}>Back</button>
+                <button onClick={() => goto(step + 1)} disabled={step >= total}>Forward</button>
+                <button onClick={() => goto(0)}><RefreshCcw size={14} /> Reset</button>
+                <span className="progress"><strong>{step}</strong> / {total} steps</span>
+              </div>
+            </div>
+
+            <div className="step-strip">
+              {demo.steps.map((s, idx) => {
+                const meta = layerMeta[s.layer];
+                const n = idx + 1;
+                const active = n === step;
+                const passed = n < step;
+                return (
+                  <button
+                    key={s.label}
+                    className={`step ${meta.colorClass} ${active ? "active" : ""} ${passed ? "passed" : ""}`}
+                    onClick={() => goto(n)}
+                  >
+                    <span className="step-num">
+                      {passed ? <CheckCircle2 size={15} /> : active ? <CircleDot size={15} /> : n}
+                    </span>
+                    <span className="step-label">{s.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="run-body">
+              <div className="fanout">
+                <div className={`orchestrator ${firingLayer ? "firing" : ""}`} key={`orch-${step}`}>
+                  <Zap size={16} />
+                  <strong>Orchestrator</strong>
+                  <span>{currentStep ? currentStep.label : "idle"}</span>
+                </div>
+                <div className="fan-line" />
+                <div className="fan-systems">
+                  {layerOrder.map((layer) => {
+                    const meta = layerMeta[layer];
+                    const Icon = meta.icon;
+                    const fired = firedLayers.has(layer);
+                    const isFiring = firingLayer === layer;
+                    return (
+                      <div
+                        key={isFiring ? `${layer}-${step}` : layer}
+                        className={`fan-card ${meta.colorClass} ${fired ? "fired" : ""} ${isFiring ? "firing" : ""}`}
+                      >
+                        <div className="fan-dot" />
+                        <Icon size={18} />
+                        <strong>{meta.label}</strong>
+                        <small>{fired ? `${layerCounts[layer]} records` : "—"}</small>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="run-detail">
+                <div className={`narration ${currentStep ? layerMeta[currentStep.layer].colorClass : ""}`}>
+                  {currentStep ? (
+                    <>
+                      <div className="narration-label">
+                        Step {step} · {currentStep.label}
+                        {currentStep.actor ? <span className="narration-actor">{currentStep.actor}</span> : null}
+                      </div>
+                      <p>{currentStep.detail}</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="narration-label">Ready</div>
+                      <p>Press <strong>Play</strong> or step forward. Each step writes durable records and lights up the layer it touches.</p>
+                    </>
+                  )}
+                </div>
+
+                <div className="trail-tabs">
+                  {["all", ...layerOrder].map((l) => {
+                    const label = l === "all" ? "all" : layerMeta[l].label.toLowerCase();
+                    const hasUpdate = l !== "all" && firingLayer === l;
+                    return (
+                      <button
+                        key={l}
+                        className={`trail-tab ${trailLayer === l ? "active" : ""} ${hasUpdate ? "has-update" : ""}`}
+                        onClick={() => setTrailLayer(l)}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="trail-panel">
+                  {trail.length === 0 ? (
+                    <div className="trail-empty">
+                      {step === 0 ? "// no records written yet — start the run" : "// no records on this layer yet"}
+                    </div>
+                  ) : (
+                    trail.map((s) => (
+                      <div className={`trail-line ${s.idx === step - 1 ? "fresh" : ""}`} key={s.idx}>
+                        <span className="t-time">[{stamp(s.idx)}]</span>{" "}
+                        <span className={`t-event tcol-${s.layer}`}>{eventName(s)}</span>{" "}
+                        <span className="t-fields">{s.writes.join(" · ")}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="cledger">
+              <div className="cledger-head">
+                <ShieldCheck size={15} />
+                <span className="section-label">Decision ledger</span>
+                <span className="cledger-count">{recordCount} records</span>
+              </div>
+              {executed.length === 0 ? (
+                <div className="cledger-empty">Run the app to fill the ledger.</div>
+              ) : (
+                <div className="cledger-list">
+                  {executed.map((s, idx) => (
+                    <div key={`${s.label}-${idx}`} className={`cledger-row ${layerMeta[s.layer].colorClass} ${idx === step - 1 ? "fresh" : ""}`}>
+                      <span className="cl-num">{idx + 1}</span>
+                      <span className="cl-label">{s.label}</span>
+                      <span className="cl-fields">{s.writes.join(" · ")}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </details>
+
+      {/* ---------- Architecture, for the curious ---------- */}
       <details className="arch">
         <summary>
           <span className="arch-summary-left">
             <Layers3 size={17} />
             <span>
-              <strong>Architecture &amp; scenario, for the curious</strong>
-              <small>The four layers, the capability graph, and a what-if sandbox</small>
+              <strong>Architecture, for the curious</strong>
+              <small>The four layers and the capability graph behind the run</small>
             </span>
           </span>
           <ChevronRight className="arch-chevron" size={18} />
@@ -532,36 +810,6 @@ function App() {
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className="scenario-panel">
-            <div className="panel-heading">
-              <div>
-                <span className="section-label">What-if sandbox</span>
-                <h3>{demo.scenario.title}</h3>
-              </div>
-              <GitBranch size={18} />
-            </div>
-            <div className="sliders">
-              {demo.scenario.sliders.map((slider) => (
-                <label key={slider.key}>
-                  <span>{slider.label}</span>
-                  <strong>{sliderState[slider.key]}{slider.suffix}</strong>
-                  <input
-                    type="range"
-                    min={slider.min}
-                    max={slider.max}
-                    value={sliderState[slider.key]}
-                    onChange={(e) => setSliderState({ ...sliderState, [slider.key]: Number(e.target.value) })}
-                  />
-                </label>
-              ))}
-            </div>
-            <div className="scenario-results">
-              <div><strong>{scenario.outcome}</strong><span>{demo.scenario.labels.outcome}</span></div>
-              <div><strong>{scenario.risk}</strong><span>{demo.scenario.labels.risk}</span></div>
-              <div><strong>{scenario.cost}</strong><span>{demo.scenario.labels.cost}</span></div>
             </div>
           </div>
 
