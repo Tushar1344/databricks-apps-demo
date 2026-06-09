@@ -4,7 +4,10 @@ import {
   Activity,
   ArrowLeft,
   ArrowRight,
+  Bell,
+  Bot,
   BrainCircuit,
+  Check,
   CheckCircle2,
   ChevronRight,
   CircleDot,
@@ -94,10 +97,10 @@ const demos = [
     ],
     steps: [
       { label: "Monitor", layer: "data", actor: "Streaming pipeline", detail: "Structured Streaming tracks lane temperature, ETAs, and DC throughput against expected bands.", writes: ["stream_offset", "metric", "expected_band"] },
-      { label: "Alert", layer: "data", actor: "Monitoring rule", detail: "A refrigerated Northeast lane breaches its SLA-risk threshold — the trigger fires automatically, no human asked.", writes: ["alert_id", "entity", "severity", "detected_at"] },
+      { label: "Alert", layer: "data", actor: "Monitoring rule", detail: "A refrigerated Northeast lane breaches its SLA-risk threshold — the trigger fires automatically, no human asked.", writes: ["alert_id", "entity", "severity", "detected_at"], event: { type: "alert", from: "Lakehouse Monitoring", body: "Refrigerated Northeast lane crossed its SLA-risk threshold. No human asked — the rule fired on its own." } },
       { label: "Explain", layer: "logic", actor: "Agent · Genie", detail: "The constrained agent drills in via Genie: late inbound inventory and a carrier delay are the dominant causes.", writes: ["root_cause", "confidence", "supporting_queries"] },
-      { label: "Simulate", layer: "logic", actor: "Agent", detail: "Agent proposes three bounded options — expedite, reroute, split shipment — each with cost, ETA gain, and risk.", writes: ["scenario_id", "expected_cost", "expected_sla_gain", "risk"] },
-      { label: "Approve", layer: "user", actor: "Human · ops manager", detail: "Expedite cost exceeds policy, so the action pauses for human approval before anything executes.", writes: ["approval_request", "approver", "rationale"] },
+      { label: "Simulate", layer: "logic", actor: "Agent", detail: "Agent proposes three bounded options — expedite, reroute, split shipment — each with cost, ETA gain, and risk.", writes: ["scenario_id", "expected_cost", "expected_sla_gain", "risk"], event: { type: "ask", from: "Watchtower agent", body: "I found three bounded fixes — expedite, reroute, or split shipment. Reroute gives the best ETA gain within budget. Want me to prep it for approval?" } },
+      { label: "Approve", layer: "user", actor: "Human · ops manager", detail: "Expedite cost exceeds policy, so the action pauses for human approval before anything executes.", writes: ["approval_request", "approver", "rationale"], event: { type: "approval", from: "Watchtower agent", body: "The reroute plan is ready, but its cost exceeds policy. Approve and I'll execute it through a Lakeflow Job." } },
       { label: "Execute", layer: "infra", actor: "System · Lakeflow Job", detail: "A Lakeflow Job pushes the approved reroute plan to fulfillment and carrier systems.", writes: ["job_run_id", "action_payload", "idempotency_key"] },
       { label: "Learn", layer: "data", actor: "System · writeback", detail: "Actual outcome and the approver's comments become ground truth for the next model cycle.", writes: ["actual_sla", "business_impact", "ground_truth_label"] },
     ],
@@ -148,8 +151,8 @@ const demos = [
       { label: "Explore", layer: "logic", actor: "Agent · Genie", detail: "Agent uses Genie to find categories with margin leakage and enough demand resilience to move.", writes: ["hypothesis", "query_trace", "evidence"] },
       { label: "Predict", layer: "logic", actor: "Agent · Model Serving", detail: "Model Serving forecasts demand, elasticity, and churn for each candidate action.", writes: ["forecast_id", "confidence_interval", "feature_snapshot"] },
       { label: "Simulate", layer: "logic", actor: "Agent · Jobs", detail: "Agent runs many price, promo, and inventory scenarios as parallel Lakeflow Jobs.", writes: ["scenario_id", "scenario_count", "score_distribution"] },
-      { label: "Optimize", layer: "logic", actor: "Agent", detail: "It selects the plan that maximizes expected margin under brand, legal, and inventory constraints.", writes: ["chosen_plan", "constraint_check", "expected_margin"] },
-      { label: "Approve", layer: "user", actor: "Human · finance", detail: "Because the plan changes customer-facing prices, a human approves, edits, or rejects it.", writes: ["approval", "comments", "risk_acceptance"] },
+      { label: "Optimize", layer: "logic", actor: "Agent", detail: "It selects the plan that maximizes expected margin under brand, legal, and inventory constraints.", writes: ["chosen_plan", "constraint_check", "expected_margin"], event: { type: "ask", from: "Margin agent", body: "I selected the plan that maximizes margin under your brand, legal, and inventory guardrails. Want to review it before we go to finance?" } },
+      { label: "Approve", layer: "user", actor: "Human · finance", detail: "Because the plan changes customer-facing prices, a human approves, edits, or rejects it.", writes: ["approval", "comments", "risk_acceptance"], event: { type: "approval", from: "Margin agent", body: "Plan lifts margin +143 bps within guardrails and changes customer-facing prices. Approve to launch the experiment?" } },
       { label: "Monitor", layer: "data", actor: "System · writeback", detail: "Actual lift and customer response are written back as ground truth and into agent memory.", writes: ["experiment_result", "actual_lift", "lesson_learned"] },
     ],
     scenario: {
@@ -197,8 +200,8 @@ const demos = [
     steps: [
       { label: "Apply", layer: "user", actor: "Human · customer / RM", detail: "Application is captured and a case opens; the SLA clock starts on the first state.", writes: ["case_id", "applicant", "product", "submitted_at"] },
       { label: "Verify docs", layer: "logic", actor: "Human · ops analyst (agent-assist)", detail: "The agent extracts and validates ID and proof of address; the ops analyst confirms or rejects to advance the case.", writes: ["doc_extract", "id_match_score", "analyst_decision"] },
-      { label: "Risk review", layer: "logic", actor: "Human · compliance (agent-assist)", detail: "The agent pre-screens sanctions and PEP lists and drafts a risk summary; the compliance officer adds judgment.", writes: ["sanctions_hits", "pep_flag", "risk_summary_draft", "officer_notes"] },
-      { label: "Approve", layer: "user", actor: "Human · approver", detail: "Approver decides: approve, escalate, or loop the case back to an earlier state for more information.", writes: ["decision", "conditions", "loopback_reason", "approver"] },
+      { label: "Risk review", layer: "logic", actor: "Human · compliance (agent-assist)", detail: "The agent pre-screens sanctions and PEP lists and drafts a risk summary; the compliance officer adds judgment.", writes: ["sanctions_hits", "pep_flag", "risk_summary_draft", "officer_notes"], event: { type: "ask", from: "KYC agent", body: "Pre-screen done — 0 sanctions hits and no PEP match. I've drafted a risk summary. Add your judgment before it advances?" } },
+      { label: "Approve", layer: "user", actor: "Human · approver", detail: "Approver decides: approve, escalate, or loop the case back to an earlier state for more information.", writes: ["decision", "conditions", "loopback_reason", "approver"], event: { type: "approval", from: "KYC agent", body: "Case is complete and within SLA. Approve to activate the account, or loop it back for more information." } },
       { label: "Activate", layer: "infra", actor: "System · Lakeflow Job", detail: "On approval, a Lakeflow Job provisions the account and notifies the customer.", writes: ["job_run_id", "account_id", "activated_at"] },
       { label: "Audit", layer: "data", actor: "System · Lakebase", detail: "Every transition — actor, decision, comments, risks, and final ground truth — is persisted as a queryable audit trail.", writes: ["audit_trail", "ground_truth", "cycle_time"] },
     ],
@@ -529,6 +532,17 @@ function App() {
                 </span>
               </div>
 
+              {currentStep?.event?.type === "alert" && (
+                <div className="screen-alert" role="alert">
+                  <span className="screen-alert-icon"><Bell size={15} /></span>
+                  <div className="screen-alert-body">
+                    <span className="screen-alert-from">{currentStep.event.from}</span>
+                    <p>{currentStep.event.body}</p>
+                  </div>
+                  <span className="screen-alert-tag">Alert</span>
+                </div>
+              )}
+
               <div className="screen-rail">
                 {demo.steps.map((s, idx) => {
                   const n = idx + 1;
@@ -554,46 +568,68 @@ function App() {
                 <ScreenVisual demo={demo} step={step} sliderState={sliderState} scenario={scenario} />
               </div>
 
-              <div className={`screen-note ${stepMeta ? stepMeta.colorClass : ""}`}>
-                {currentStep ? (
-                  <>
-                    <span className="screen-note-label">Step {step} / {total} · {currentStep.label}</span>
-                    <p>{currentStep.detail}</p>
-                  </>
-                ) : (
-                  <>
-                    <span className="screen-note-label">Ready</span>
-                    <p>Press Play, or drag a control below — the screen updates live and each step writes durable records.</p>
-                  </>
-                )}
-              </div>
+              {currentStep?.event && currentStep.event.type !== "alert" ? (
+                <div className={`chat-bubble ${currentStep.event.type === "approval" ? "approval" : ""}`}>
+                  <span className="chat-avatar"><Bot size={15} /></span>
+                  <div className="chat-body">
+                    <span className="chat-from">{currentStep.event.from}</span>
+                    <p>{currentStep.event.body}</p>
+                    {currentStep.event.type === "approval" && (
+                      <div className="chat-actions">
+                        <button type="button" className="chat-approve"><Check size={13} /> Approve</button>
+                        <button type="button" className="chat-reject">Reject</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className={`screen-note ${stepMeta ? stepMeta.colorClass : ""}`}>
+                  {currentStep ? (
+                    <>
+                      <span className="screen-note-label">Step {step} / {total} · {currentStep.label}</span>
+                      <p>{currentStep.detail}</p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="screen-note-label">Ready</span>
+                      <p>Press Play, or open Tweak inputs below — the screen updates live and each step writes durable records.</p>
+                    </>
+                  )}
+                </div>
+              )}
 
-              <div className="screen-sandbox">
-                <div className="screen-sandbox-head">
-                  <span className="section-label">{demo.scenario.title}</span>
-                  <GitBranch size={14} />
+              <details className="screen-sandbox">
+                <summary className="screen-sandbox-head">
+                  <span className="sandbox-summary-left">
+                    <GitBranch size={14} />
+                    <span className="section-label">Tweak inputs</span>
+                  </span>
+                  <span className="sandbox-hint">drag a control — the chart above updates live</span>
+                  <ChevronRight size={15} className="sandbox-chevron" />
+                </summary>
+                <div className="sandbox-inner">
+                  <div className="sliders">
+                    {demo.scenario.sliders.map((slider) => (
+                      <label key={slider.key}>
+                        <span>{slider.label}</span>
+                        <strong>{sliderState[slider.key]}{slider.suffix}</strong>
+                        <input
+                          type="range"
+                          min={slider.min}
+                          max={slider.max}
+                          value={sliderState[slider.key]}
+                          onChange={(e) => setSliderState({ ...sliderState, [slider.key]: Number(e.target.value) })}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="scenario-results">
+                    <div><strong>{scenario.outcome}</strong><span>{demo.scenario.labels.outcome}</span></div>
+                    <div><strong>{scenario.risk}</strong><span>{demo.scenario.labels.risk}</span></div>
+                    <div><strong>{scenario.cost}</strong><span>{demo.scenario.labels.cost}</span></div>
+                  </div>
                 </div>
-                <div className="sliders">
-                  {demo.scenario.sliders.map((slider) => (
-                    <label key={slider.key}>
-                      <span>{slider.label}</span>
-                      <strong>{sliderState[slider.key]}{slider.suffix}</strong>
-                      <input
-                        type="range"
-                        min={slider.min}
-                        max={slider.max}
-                        value={sliderState[slider.key]}
-                        onChange={(e) => setSliderState({ ...sliderState, [slider.key]: Number(e.target.value) })}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <div className="scenario-results">
-                  <div><strong>{scenario.outcome}</strong><span>{demo.scenario.labels.outcome}</span></div>
-                  <div><strong>{scenario.risk}</strong><span>{demo.scenario.labels.risk}</span></div>
-                  <div><strong>{scenario.cost}</strong><span>{demo.scenario.labels.cost}</span></div>
-                </div>
-              </div>
+              </details>
 
               <div className="screen-foot">
                 <span><strong>{step}</strong> / {total} steps</span>
