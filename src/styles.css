@@ -123,8 +123,10 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 .transport button.primary { background: var(--lava); color: white; border-color: var(--lava); }
 .transport button.primary:hover { background: var(--lava-deep); border-color: var(--lava-deep); }
 
-/* ---------- Detail grid ---------- */
-.detail-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.85fr); gap: 16px; margin-bottom: 16px; align-items: start; }
+/* ---------- Detail stack (About card above the screen) ---------- */
+.detail-stack { display: grid; gap: 16px; margin-bottom: 16px; }
+.detail-card-top dl { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 22px; }
+.detail-card-top .dc-services { margin-top: 16px; }
 
 /* ---------- Computer view (device) ---------- */
 .screen-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 18px; }
@@ -188,8 +190,7 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 .screen-foot { display: flex; gap: 18px; border-top: 1px solid var(--line-soft); padding-top: 10px; font-family: "JetBrains Mono", monospace; font-size: 0.78rem; color: var(--muted); }
 .screen-foot strong { color: var(--text); }
 
-/* ---------- Side column: detail card ---------- */
-.side-col { display: grid; gap: 14px; align-content: start; }
+/* ---------- Detail card (About this app) ---------- */
 .detail-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 18px 20px; }
 .detail-card dl { margin: 12px 0 0; display: grid; gap: 12px; }
 .dc-row dt { font-size: 0.64rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: var(--muted); margin-bottom: 3px; }
@@ -400,7 +401,7 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 960px) {
-  .title-row, .detail-grid, .run-body, .stack-wrap { grid-template-columns: 1fr; }
+  .title-row, .run-body, .stack-wrap { grid-template-columns: 1fr; }
   .gallery-grid { grid-template-columns: repeat(2, 1fr); }
   .step-strip { grid-template-columns: repeat(4, 1fr); }
 }

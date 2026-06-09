@@ -480,7 +480,24 @@ function App() {
         </div>
       </section>
 
-      <div className="detail-grid">
+      <div className="detail-stack">
+        {/* ----- About this app (above the screen) ----- */}
+        <div className="detail-card detail-card-top">
+          <span className="section-label">About this app</span>
+          <dl>
+            <div className="dc-row"><dt>Purpose</dt><dd>{demo.goal}</dd></div>
+            <div className="dc-row"><dt>Pattern</dt><dd>{demo.mode}</dd></div>
+            <div className="dc-row"><dt>Who uses it</dt><dd>{demo.users}</dd></div>
+            <div className="dc-row"><dt>Key interaction</dt><dd>{demo.interaction}</dd></div>
+          </dl>
+          <div className="dc-services">
+            <span className="dc-services-label">Databricks</span>
+            <div className="svc-chips">
+              {demo.services.map((s) => <span key={s} className="svc-chip">{s}</span>)}
+            </div>
+          </div>
+        </div>
+
         {/* ----- Computer view: the app running on screen ----- */}
         <section className="screen-wrap">
           <div className="screen-bar">
@@ -585,25 +602,6 @@ function App() {
             </div>
           </div>
         </section>
-
-        {/* ----- Right column: light detail card + compressed ledger ----- */}
-        <aside className="side-col">
-          <div className="detail-card">
-            <span className="section-label">About this app</span>
-            <dl>
-              <div className="dc-row"><dt>Purpose</dt><dd>{demo.goal}</dd></div>
-              <div className="dc-row"><dt>Pattern</dt><dd>{demo.mode}</dd></div>
-              <div className="dc-row"><dt>Who uses it</dt><dd>{demo.users}</dd></div>
-              <div className="dc-row"><dt>Key interaction</dt><dd>{demo.interaction}</dd></div>
-            </dl>
-            <div className="dc-services">
-              <span className="dc-services-label">Databricks</span>
-              <div className="svc-chips">
-                {demo.services.map((s) => <span key={s} className="svc-chip">{s}</span>)}
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
 
       {/* ---------- Day in the life: step-through + command-line trail ---------- */}
