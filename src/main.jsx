@@ -59,10 +59,10 @@ const demos = [
   {
     id: "ops",
     eyebrow: "App 01",
-    title: "Real-Time Operations Resolution Center",
-    subtitle: "Detect SLA risk, explain it, simulate fixes, route approval, execute, and learn.",
-    goal: "Prevent customer-impacting failures before they breach SLA.",
-    mode: "Constrained agent inside a deterministic workflow",
+    title: "Real-Time Operations Watchtower",
+    subtitle: "Monitor live, alert on breach, explain it, simulate bounded fixes, route approval, execute, and learn.",
+    goal: "Catch customer-impacting failures before they breach SLA.",
+    mode: "Constrained agent inside a real-time workflow",
     accent: "ops",
     metricLabel: "SLA risk avoided",
     metricValue: "$220K",
@@ -74,12 +74,13 @@ const demos = [
       { layer: "infra", title: "Databricks resources", body: "Apps UI, Lakeflow Jobs, SQL Warehouse, Model Serving, Genie, Lakebase." },
     ],
     steps: [
-      { label: "Alert", layer: "data", detail: "Streaming order events show Northeast SLA risk rising above threshold.", writes: ["alert_id", "entity", "severity", "detected_at"] },
-      { label: "Explain", layer: "logic", detail: "Genie drilldown identifies late inbound inventory and carrier delay as dominant causes.", writes: ["root_cause", "confidence", "supporting_queries"] },
-      { label: "Simulate", layer: "logic", detail: "Run three remediation options: expedite, reroute, split shipment.", writes: ["scenario_id", "expected_cost", "expected_sla_gain", "risk"] },
-      { label: "Approve", layer: "user", detail: "Finance approval required because expedite cost exceeds threshold.", writes: ["approval_request", "approver", "rationale"] },
-      { label: "Execute", layer: "infra", detail: "Lakeflow Job pushes the approved reroute plan to fulfillment and carrier systems.", writes: ["job_run_id", "action_payload", "idempotency_key"] },
-      { label: "Learn", layer: "data", detail: "Actual outcome and override comments become ground truth for the next model cycle.", writes: ["actual_sla", "business_impact", "ground_truth_label"] },
+      { label: "Monitor", layer: "data", actor: "Streaming pipeline", detail: "Structured Streaming tracks lane temperature, ETAs, and DC throughput against expected bands.", writes: ["stream_offset", "metric", "expected_band"] },
+      { label: "Alert", layer: "data", actor: "Monitoring rule", detail: "A refrigerated Northeast lane breaches its SLA-risk threshold — the trigger fires automatically, no human asked.", writes: ["alert_id", "entity", "severity", "detected_at"] },
+      { label: "Explain", layer: "logic", actor: "Agent · Genie", detail: "The constrained agent drills in via Genie: late inbound inventory and a carrier delay are the dominant causes.", writes: ["root_cause", "confidence", "supporting_queries"] },
+      { label: "Simulate", layer: "logic", actor: "Agent", detail: "Agent proposes three bounded options — expedite, reroute, split shipment — each with cost, ETA gain, and risk.", writes: ["scenario_id", "expected_cost", "expected_sla_gain", "risk"] },
+      { label: "Approve", layer: "user", actor: "Human · ops manager", detail: "Expedite cost exceeds policy, so the action pauses for human approval before anything executes.", writes: ["approval_request", "approver", "rationale"] },
+      { label: "Execute", layer: "infra", actor: "System · Lakeflow Job", detail: "A Lakeflow Job pushes the approved reroute plan to fulfillment and carrier systems.", writes: ["job_run_id", "action_payload", "idempotency_key"] },
+      { label: "Learn", layer: "data", actor: "System · writeback", detail: "Actual outcome and the approver's comments become ground truth for the next model cycle.", writes: ["actual_sla", "business_impact", "ground_truth_label"] },
     ],
     scenario: {
       title: "Resolution simulator",
@@ -106,7 +107,7 @@ const demos = [
   {
     id: "optimizer",
     eyebrow: "App 02",
-    title: "Autonomous Growth & Margin Optimizer",
+    title: "Autonomous Margin Optimizer",
     subtitle: "A goal-seeking app that explores data, forecasts, simulates, optimizes, and asks humans to decide.",
     goal: "Recover margin while protecting revenue, inventory health, and CX.",
     mode: "Fully agentic, goal-seeking app with approval boundaries",
@@ -121,12 +122,13 @@ const demos = [
       { layer: "infra", title: "Databricks resources", body: "Genie, SQL Warehouse, Model Serving, Jobs, MLflow traces, Lakebase ledger." },
     ],
     steps: [
-      { label: "Set goal", layer: "user", detail: "Business owner sets target: recover 150 bps of gross margin this quarter.", writes: ["goal", "metric", "constraints", "owner"] },
-      { label: "Explore", layer: "logic", detail: "Agent uses Genie to find categories with margin leakage and demand resilience.", writes: ["hypothesis", "query_trace", "evidence"] },
-      { label: "Predict", layer: "logic", detail: "Forecast demand, churn, inventory exposure, and revenue impact per candidate action.", writes: ["forecast_id", "confidence_interval", "feature_snapshot"] },
-      { label: "Optimize", layer: "logic", detail: "Choose the plan that maximizes expected margin under brand, legal, and inventory constraints.", writes: ["candidate_plan", "constraint_check", "expected_value"] },
-      { label: "Approve", layer: "user", detail: "Human approves because the plan changes customer-facing prices and promo depth.", writes: ["approval", "comments", "risk_acceptance"] },
-      { label: "Monitor", layer: "data", detail: "Actual lift, revenue impact, and customer response are written back as ground truth.", writes: ["experiment_result", "actual_lift", "lesson_learned"] },
+      { label: "Set goal", layer: "user", actor: "Human · VP", detail: "Business owner sets the target: recover 150 bps of gross margin this quarter while protecting revenue and CX.", writes: ["goal", "metric", "constraints", "owner"] },
+      { label: "Explore", layer: "logic", actor: "Agent · Genie", detail: "Agent uses Genie to find categories with margin leakage and enough demand resilience to move.", writes: ["hypothesis", "query_trace", "evidence"] },
+      { label: "Predict", layer: "logic", actor: "Agent · Model Serving", detail: "Model Serving forecasts demand, elasticity, and churn for each candidate action.", writes: ["forecast_id", "confidence_interval", "feature_snapshot"] },
+      { label: "Simulate", layer: "logic", actor: "Agent · Jobs", detail: "Agent runs many price, promo, and inventory scenarios as parallel Lakeflow Jobs.", writes: ["scenario_id", "scenario_count", "score_distribution"] },
+      { label: "Optimize", layer: "logic", actor: "Agent", detail: "It selects the plan that maximizes expected margin under brand, legal, and inventory constraints.", writes: ["chosen_plan", "constraint_check", "expected_margin"] },
+      { label: "Approve", layer: "user", actor: "Human · finance", detail: "Because the plan changes customer-facing prices, a human approves, edits, or rejects it.", writes: ["approval", "comments", "risk_acceptance"] },
+      { label: "Monitor", layer: "data", actor: "System · writeback", detail: "Actual lift and customer response are written back as ground truth and into agent memory.", writes: ["experiment_result", "actual_lift", "lesson_learned"] },
     ],
     scenario: {
       title: "Optimization sandbox",
@@ -151,51 +153,51 @@ const demos = [
     ],
   },
   {
-    id: "fabric",
+    id: "kyc",
     eyebrow: "App 03",
-    title: "Enterprise Decision Fabric & Custom MCP Hub",
-    subtitle: "A mostly headless app exposing governed tools, state machines, decision memory, and writeback APIs.",
-    goal: "Make every app and agent safer, reusable, auditable, and stateful.",
-    mode: "Headless app + custom MCP server + reusable workflow services",
-    accent: "fabric",
-    metricLabel: "Reusable tools exposed",
-    metricValue: "14",
-    status: "MCP server online",
+    title: "Customer Onboarding & KYC Desk",
+    subtitle: "A multi-user lifecycle: roles hand the case off stage by stage, agents assist, humans drive every transition.",
+    goal: "Onboard a new customer correctly, compliantly, and on the clock.",
+    mode: "Multi-user finite-state machine with agent assist",
+    accent: "kyc",
+    metricLabel: "Median time to decision",
+    metricValue: "2.4 days",
+    status: "Awaiting approval",
     cards: [
-      { layer: "user", title: "Admin & review console", body: "Tool registry, policy review, lifecycle stages, approval queues, audit search." },
-      { layer: "logic", title: "MCP tool layer", body: "get_context, ask_genie, simulate_scenario, check_policy, record_decision." },
-      { layer: "data", title: "Decision memory", body: "Cases, comments, approvals, risks, recommendations, ground truth, traces." },
-      { layer: "infra", title: "Databricks resources", body: "Custom MCP on Databricks Apps, managed MCPs, Unity Catalog, AI Gateway, Lakebase." },
+      { layer: "user", title: "Role-based queues", body: "Customer/RM intake, ops-analyst queue, compliance desk, approver inbox — each role sees only its stage and permitted actions." },
+      { layer: "logic", title: "FSM + agent assist", body: "A state machine gates each transition on required inputs; agents extract docs, pre-screen sanctions/PEP, and draft risk summaries." },
+      { layer: "data", title: "Decision memory & audit", body: "Cases, comments, decisions, risks, recommendations, ground truth, and a full who-did-what audit trail." },
+      { layer: "infra", title: "Databricks resources", body: "Lakebase (state + audit), Unity Catalog (governed customer data), Model Serving (doc extraction, risk), Lakeflow Jobs (provisioning)." },
     ],
     steps: [
-      { label: "Register", layer: "logic", detail: "Declare tools, schemas, permissions, and audit tier for each business capability.", writes: ["tool_name", "schema", "owner", "audit_tier"] },
-      { label: "Call", layer: "infra", detail: "Another Databricks App or agent calls the custom MCP server as a governed tool provider.", writes: ["caller_app", "tool_call_id", "auth_context"] },
-      { label: "Check", layer: "logic", detail: "Policy checks Unity Catalog permissions, risk tier, allowed side effects, and approval rules.", writes: ["policy_decision", "denied_fields", "approval_required"] },
-      { label: "Act", layer: "logic", detail: "Tool executes: fetch context, run forecast, ask Genie, simulate, or create a workflow item.", writes: ["task_run", "artifact", "result"] },
-      { label: "Transition", layer: "user", detail: "Finite-state workflow advances once required human and system outputs are present.", writes: ["from_state", "to_state", "actor", "required_outputs"] },
-      { label: "Remember", layer: "data", detail: "Decision, rationale, comments, risk, and outcome are persisted for future apps.", writes: ["decision", "rationale", "feedback", "ground_truth"] },
+      { label: "Apply", layer: "user", actor: "Human · customer / RM", detail: "Application is captured and a case opens; the SLA clock starts on the first state.", writes: ["case_id", "applicant", "product", "submitted_at"] },
+      { label: "Verify docs", layer: "logic", actor: "Human · ops analyst (agent-assist)", detail: "The agent extracts and validates ID and proof of address; the ops analyst confirms or rejects to advance the case.", writes: ["doc_extract", "id_match_score", "analyst_decision"] },
+      { label: "Risk review", layer: "logic", actor: "Human · compliance (agent-assist)", detail: "The agent pre-screens sanctions and PEP lists and drafts a risk summary; the compliance officer adds judgment.", writes: ["sanctions_hits", "pep_flag", "risk_summary_draft", "officer_notes"] },
+      { label: "Approve", layer: "user", actor: "Human · approver", detail: "Approver decides: approve, escalate, or loop the case back to an earlier state for more information.", writes: ["decision", "conditions", "loopback_reason", "approver"] },
+      { label: "Activate", layer: "infra", actor: "System · Lakeflow Job", detail: "On approval, a Lakeflow Job provisions the account and notifies the customer.", writes: ["job_run_id", "account_id", "activated_at"] },
+      { label: "Audit", layer: "data", actor: "System · Lakebase", detail: "Every transition — actor, decision, comments, risks, and final ground truth — is persisted as a queryable audit trail.", writes: ["audit_trail", "ground_truth", "cycle_time"] },
     ],
     scenario: {
-      title: "Governed tool exposure",
+      title: "SLA & risk posture",
       sliders: [
-        { key: "tools", label: "Tools exposed", min: 1, max: 30, value: 14, suffix: "" },
-        { key: "policy", label: "Policy strictness", min: 0, max: 100, value: 72, suffix: "%" },
-        { key: "reuse", label: "Cross-app reuse", min: 0, max: 100, value: 63, suffix: "%" },
+        { key: "strictness", label: "Doc-check strictness", min: 0, max: 100, value: 60, suffix: "%" },
+        { key: "risk", label: "Risk threshold", min: 0, max: 100, value: 55, suffix: "%" },
+        { key: "auto", label: "Auto-clear ceiling", min: 0, max: 100, value: 40, suffix: "%" },
       ],
       formula: (v) => ({
-        outcome: Math.round(v.tools * (1 + v.reuse / 55)),
-        risk: Math.max(1, Math.round(34 - v.policy * 0.21 - v.reuse * 0.05)),
-        cost: Math.round(10 + v.tools * 1.4 + v.policy * 0.05),
+        outcome: Math.max(0, Math.round(18 + v.auto * 0.55 - v.strictness * 0.12)),
+        risk: Math.max(2, Math.round(32 + v.auto * 0.22 - v.risk * 0.2 - v.strictness * 0.08)),
+        cost: Math.round(34 + v.strictness * 0.4 + v.risk * 0.18 - v.auto * 0.15),
       }),
-      labels: { outcome: "app integrations", risk: "governance gap", cost: "ops overhead" },
+      labels: { outcome: "auto-cleared %", risk: "residual risk", cost: "escalations / wk" },
     },
     graph: [
-      ["App A", "Custom MCP", "infra"],
-      ["Custom MCP", "Policy checker", "logic"],
-      ["Policy checker", "Unity Catalog", "data"],
-      ["Custom MCP", "Genie / SQL / AI Search", "data"],
-      ["Custom MCP", "Decision ledger", "data"],
-      ["Reviewer", "State transition", "user"],
+      ["Application", "Doc verification", "user"],
+      ["Agent extract", "Ops analyst", "logic"],
+      ["Sanctions / PEP screen", "Compliance officer", "logic"],
+      ["Risk summary", "Approver", "user"],
+      ["Provisioning job", "Account live", "infra"],
+      ["Decision memory", "Audit trail", "data"],
     ],
   },
 ];
@@ -277,8 +279,9 @@ function App() {
         <div className="eyebrow">Art of the possible · interactive prototypes</div>
         <h1>Watch a data + AI native app actually run.</h1>
         <p className="lede">
-          Three Databricks App demos. Press play and follow the decision: each step writes a
-          durable record, fans out across the stack, and lands in the ledger.
+          Three Databricks App demos along one spectrum — constrained agent, fully autonomous,
+          human-driven workflow. Press play and follow the decision: each step writes a durable
+          record, fans out across the stack, and lands in the ledger.
         </p>
       </header>
 
@@ -387,6 +390,7 @@ function App() {
                 <>
                   <div className="narration-label">
                     Step {step} · {currentStep.label}
+                    {currentStep.actor ? <span className="narration-actor">{currentStep.actor}</span> : null}
                   </div>
                   <p>{currentStep.detail}</p>
                 </>

@@ -176,7 +176,8 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 .narration.layer-logic { border-color: var(--logic-border); background: var(--logic-bg); }
 .narration.layer-data { border-color: var(--data-border); background: var(--data-bg); }
 .narration.layer-infra { border-color: var(--infra-border); background: var(--infra-bg); }
-.narration-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: var(--lava-deep); margin-bottom: 5px; }
+.narration-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: var(--lava-deep); margin-bottom: 5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.narration-actor { font-family: "JetBrains Mono", monospace; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 0.62rem; color: var(--text); background: rgba(0,0,0,.05); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
 .narration p { margin: 0; color: var(--text); line-height: 1.5; font-size: 0.93rem; }
 
 .trail-tabs { display: flex; gap: 3px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
@@ -296,7 +297,7 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 
 .theme-ops .metric-chip { box-shadow: 0 16px 40px rgba(0,169,114,.22); }
 .theme-optimizer .metric-chip { box-shadow: 0 16px 40px rgba(255,54,33,.22); }
-.theme-fabric .metric-chip { box-shadow: 0 16px 40px rgba(34,114,180,.22); }
+.theme-kyc .metric-chip { box-shadow: 0 16px 40px rgba(34,114,180,.22); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 960px) {
