@@ -2,61 +2,65 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
-  AlertTriangle,
   ArrowRight,
   BrainCircuit,
   CheckCircle2,
+  ChevronRight,
   CircleDot,
   Database,
   GitBranch,
   Layers3,
-  MessageSquareText,
   Network,
   Pause,
   Play,
   RefreshCcw,
   ServerCog,
   ShieldCheck,
-  Sparkles,
   UserRoundCheck,
   Workflow,
+  Zap,
 } from "lucide-react";
 import "./styles.css";
 
 const layerMeta = {
   user: {
-    label: "User layer",
+    label: "User",
     short: "people, approvals, workflow UI",
+    owns: "Decisions, approvals, and the human-in-the-loop surface.",
     colorClass: "layer-user",
     icon: UserRoundCheck,
   },
   logic: {
-    label: "Logic layer",
+    label: "Logic",
     short: "agents, policies, workflows, simulation",
+    owns: "What an action means, which policy fires, and how the plan is chosen.",
     colorClass: "layer-logic",
     icon: BrainCircuit,
   },
   data: {
-    label: "Data layer",
+    label: "Data",
     short: "tables, features, vectors, writeback",
+    owns: "The durable truth — records written back and learned from.",
     colorClass: "layer-data",
     icon: Database,
   },
   infra: {
-    label: "Infrastructure layer",
+    label: "Infra",
     short: "Databricks Apps, Jobs, Model Serving, MCP",
+    owns: "Durable execution: Jobs, SQL Warehouse, Model Serving, MCP.",
     colorClass: "layer-infra",
     icon: ServerCog,
   },
 };
+
+const layerOrder = ["user", "logic", "data", "infra"];
 
 const demos = [
   {
     id: "ops",
     eyebrow: "App 01",
     title: "Real-Time Operations Resolution Center",
-    subtitle:
-      "Detect SLA risk, explain root cause, simulate fixes, route approvals, execute, and learn.",
+    subtitle: "Detect SLA risk, explain it, simulate fixes, route approval, execute, and learn.",
     goal: "Prevent customer-impacting failures before they breach SLA.",
     mode: "Constrained agent inside a deterministic workflow",
     accent: "ops",
@@ -66,15 +70,15 @@ const demos = [
     cards: [
       { layer: "user", title: "Ops command center", body: "Triage queue, case owner, approval panel, customer comms draft." },
       { layer: "logic", title: "Exception workflow", body: "Detect → classify → root-cause → simulate → approve → execute → verify." },
-      { layer: "data", title: "Streaming + warehouse data", body: "Orders, telemetry, carrier events, inventory, customer priority, historical incidents." },
-      { layer: "infra", title: "Databricks resources", body: "Apps UI, Lakeflow Jobs, SQL Warehouse, Model Serving, Genie Space, Lakebase writeback." },
+      { layer: "data", title: "Streaming + warehouse data", body: "Orders, telemetry, carrier events, inventory, customer priority, history." },
+      { layer: "infra", title: "Databricks resources", body: "Apps UI, Lakeflow Jobs, SQL Warehouse, Model Serving, Genie, Lakebase." },
     ],
     steps: [
       { label: "Alert", layer: "data", detail: "Streaming order events show Northeast SLA risk rising above threshold.", writes: ["alert_id", "entity", "severity", "detected_at"] },
       { label: "Explain", layer: "logic", detail: "Genie drilldown identifies late inbound inventory and carrier delay as dominant causes.", writes: ["root_cause", "confidence", "supporting_queries"] },
       { label: "Simulate", layer: "logic", detail: "Run three remediation options: expedite, reroute, split shipment.", writes: ["scenario_id", "expected_cost", "expected_sla_gain", "risk"] },
       { label: "Approve", layer: "user", detail: "Finance approval required because expedite cost exceeds threshold.", writes: ["approval_request", "approver", "rationale"] },
-      { label: "Execute", layer: "infra", detail: "Lakeflow Job pushes approved reroute plan to fulfillment and carrier systems.", writes: ["job_run_id", "action_payload", "idempotency_key"] },
+      { label: "Execute", layer: "infra", detail: "Lakeflow Job pushes the approved reroute plan to fulfillment and carrier systems.", writes: ["job_run_id", "action_payload", "idempotency_key"] },
       { label: "Learn", layer: "data", detail: "Actual outcome and override comments become ground truth for the next model cycle.", writes: ["actual_sla", "business_impact", "ground_truth_label"] },
     ],
     scenario: {
@@ -103,26 +107,25 @@ const demos = [
     id: "optimizer",
     eyebrow: "App 02",
     title: "Autonomous Growth & Margin Optimizer",
-    subtitle:
-      "A metric-seeking planning app that explores data, predicts outcomes, simulates options, optimizes plans, and asks humans for decisions.",
-    goal: "Recover margin while protecting revenue, inventory health, and customer experience.",
+    subtitle: "A goal-seeking app that explores data, forecasts, simulates, optimizes, and asks humans to decide.",
+    goal: "Recover margin while protecting revenue, inventory health, and CX.",
     mode: "Fully agentic, goal-seeking app with approval boundaries",
     accent: "optimizer",
     metricLabel: "Expected margin lift",
     metricValue: "+143 bps",
     status: "Scenario review",
     cards: [
-      { layer: "user", title: "Planning cockpit", body: "VP goal, category-manager review, finance/legal approvals, experiment launch decision." },
+      { layer: "user", title: "Planning cockpit", body: "VP goal, category-manager review, finance/legal approvals, launch decision." },
       { layer: "logic", title: "Goal-seeking agent", body: "Hypothesize → query → forecast → simulate → optimize → recommend → monitor." },
-      { layer: "data", title: "Business semantic layer", body: "Sales, margin, elasticity, inventory, cohorts, promo calendar, vendor funding, constraints." },
-      { layer: "infra", title: "Databricks resources", body: "Genie Space, SQL Warehouse, Model Serving, Jobs, MLflow traces, Lakebase decision ledger." },
+      { layer: "data", title: "Business semantic layer", body: "Sales, margin, elasticity, inventory, cohorts, promo calendar, constraints." },
+      { layer: "infra", title: "Databricks resources", body: "Genie, SQL Warehouse, Model Serving, Jobs, MLflow traces, Lakebase ledger." },
     ],
     steps: [
       { label: "Set goal", layer: "user", detail: "Business owner sets target: recover 150 bps of gross margin this quarter.", writes: ["goal", "metric", "constraints", "owner"] },
-      { label: "Explore", layer: "logic", detail: "Agent uses Genie to identify categories with margin leakage and demand resilience.", writes: ["hypothesis", "query_trace", "evidence"] },
-      { label: "Predict", layer: "logic", detail: "Forecast demand, churn, inventory exposure, and revenue impact for each candidate action.", writes: ["forecast_id", "confidence_interval", "feature_snapshot"] },
-      { label: "Optimize", layer: "logic", detail: "Choose plan that maximizes expected margin subject to brand, legal, inventory, and customer constraints.", writes: ["candidate_plan", "constraint_check", "expected_value"] },
-      { label: "Approve", layer: "user", detail: "Human approves plan because it changes customer-facing prices and promotion depth.", writes: ["approval", "comments", "risk_acceptance"] },
+      { label: "Explore", layer: "logic", detail: "Agent uses Genie to find categories with margin leakage and demand resilience.", writes: ["hypothesis", "query_trace", "evidence"] },
+      { label: "Predict", layer: "logic", detail: "Forecast demand, churn, inventory exposure, and revenue impact per candidate action.", writes: ["forecast_id", "confidence_interval", "feature_snapshot"] },
+      { label: "Optimize", layer: "logic", detail: "Choose the plan that maximizes expected margin under brand, legal, and inventory constraints.", writes: ["candidate_plan", "constraint_check", "expected_value"] },
+      { label: "Approve", layer: "user", detail: "Human approves because the plan changes customer-facing prices and promo depth.", writes: ["approval", "comments", "risk_acceptance"] },
       { label: "Monitor", layer: "data", detail: "Actual lift, revenue impact, and customer response are written back as ground truth.", writes: ["experiment_result", "actual_lift", "lesson_learned"] },
     ],
     scenario: {
@@ -151,8 +154,7 @@ const demos = [
     id: "fabric",
     eyebrow: "App 03",
     title: "Enterprise Decision Fabric & Custom MCP Hub",
-    subtitle:
-      "A mostly headless Databricks App that exposes governed tools, state machines, decision memory, and writeback APIs to other apps and agents.",
+    subtitle: "A mostly headless app exposing governed tools, state machines, decision memory, and writeback APIs.",
     goal: "Make every app and agent safer, reusable, auditable, and stateful.",
     mode: "Headless app + custom MCP server + reusable workflow services",
     accent: "fabric",
@@ -161,17 +163,17 @@ const demos = [
     status: "MCP server online",
     cards: [
       { layer: "user", title: "Admin & review console", body: "Tool registry, policy review, lifecycle stages, approval queues, audit search." },
-      { layer: "logic", title: "MCP tool layer", body: "get_context, ask_genie, simulate_scenario, check_policy, record_decision, write_ground_truth." },
-      { layer: "data", title: "Decision memory", body: "Cases, comments, approvals, risks, recommendations, next steps, ground truth, traces." },
-      { layer: "infra", title: "Databricks resources", body: "Custom MCP hosted as Databricks App, managed MCPs, Unity Catalog, AI Gateway, Lakebase." },
+      { layer: "logic", title: "MCP tool layer", body: "get_context, ask_genie, simulate_scenario, check_policy, record_decision." },
+      { layer: "data", title: "Decision memory", body: "Cases, comments, approvals, risks, recommendations, ground truth, traces." },
+      { layer: "infra", title: "Databricks resources", body: "Custom MCP on Databricks Apps, managed MCPs, Unity Catalog, AI Gateway, Lakebase." },
     ],
     steps: [
       { label: "Register", layer: "logic", detail: "Declare tools, schemas, permissions, and audit tier for each business capability.", writes: ["tool_name", "schema", "owner", "audit_tier"] },
       { label: "Call", layer: "infra", detail: "Another Databricks App or agent calls the custom MCP server as a governed tool provider.", writes: ["caller_app", "tool_call_id", "auth_context"] },
       { label: "Check", layer: "logic", detail: "Policy checks Unity Catalog permissions, risk tier, allowed side effects, and approval rules.", writes: ["policy_decision", "denied_fields", "approval_required"] },
-      { label: "Act", layer: "logic", detail: "Tool executes: fetch context, run forecast, ask Genie, simulate scenario, or create workflow item.", writes: ["task_run", "artifact", "result"] },
-      { label: "Transition", layer: "user", detail: "Finite-state workflow advances after required human and system outputs are present.", writes: ["from_state", "to_state", "actor", "required_outputs"] },
-      { label: "Remember", layer: "data", detail: "Decision, rationale, comments, risk, next step, and outcome are persisted for future apps.", writes: ["decision", "rationale", "feedback", "ground_truth"] },
+      { label: "Act", layer: "logic", detail: "Tool executes: fetch context, run forecast, ask Genie, simulate, or create a workflow item.", writes: ["task_run", "artifact", "result"] },
+      { label: "Transition", layer: "user", detail: "Finite-state workflow advances once required human and system outputs are present.", writes: ["from_state", "to_state", "actor", "required_outputs"] },
+      { label: "Remember", layer: "data", detail: "Decision, rationale, comments, risk, and outcome are persisted for future apps.", writes: ["decision", "rationale", "feedback", "ground_truth"] },
     ],
     scenario: {
       title: "Governed tool exposure",
@@ -198,29 +200,31 @@ const demos = [
   },
 ];
 
-function clampStep(index, steps) {
-  return Math.max(0, Math.min(index, steps.length - 1));
-}
+const eventName = (s) => `${s.layer}.${s.label.toLowerCase().replace(/\s+/g, "_")}`;
+const stamp = (i) => `03:14:${String(2 + i * 3).padStart(2, "0")}`;
 
 function App() {
   const [activeDemoId, setActiveDemoId] = useState("ops");
-  const [selectedLayer, setSelectedLayer] = useState("logic");
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(0); // 0 = idle, 1..N = executed steps
   const [playing, setPlaying] = useState(false);
+  const [trailLayer, setTrailLayer] = useState("all");
+  const [archLayer, setArchLayer] = useState("logic");
   const [selectedNode, setSelectedNode] = useState(null);
 
   const demo = useMemo(() => demos.find((d) => d.id === activeDemoId), [activeDemoId]);
-  const currentStep = demo.steps[step];
+  const total = demo.steps.length;
 
-  const initialSliders = useMemo(() => {
-    return Object.fromEntries(demo.scenario.sliders.map((s) => [s.key, s.value]));
-  }, [demo]);
+  const initialSliders = useMemo(
+    () => Object.fromEntries(demo.scenario.sliders.map((s) => [s.key, s.value])),
+    [demo]
+  );
   const [sliderState, setSliderState] = useState(initialSliders);
 
   useEffect(() => {
     setStep(0);
     setPlaying(false);
-    setSelectedLayer("logic");
+    setTrailLayer("all");
+    setArchLayer("logic");
     setSelectedNode(null);
     setSliderState(initialSliders);
   }, [activeDemoId, initialSliders]);
@@ -229,37 +233,54 @@ function App() {
     if (!playing) return;
     const timer = window.setInterval(() => {
       setStep((s) => {
-        if (s >= demo.steps.length - 1) {
+        if (s >= total) {
           setPlaying(false);
           return s;
         }
         return s + 1;
       });
-    }, 1200);
+    }, 1150);
     return () => window.clearInterval(timer);
-  }, [playing, demo.steps.length]);
+  }, [playing, total]);
+
+  const executed = demo.steps.slice(0, step);
+  const currentStep = step > 0 ? demo.steps[step - 1] : null;
+  const firingLayer = currentStep ? currentStep.layer : null;
+  const firedLayers = new Set(executed.map((s) => s.layer));
+  const layerCounts = layerOrder.reduce((acc, l) => {
+    acc[l] = executed.filter((s) => s.layer === l).reduce((n, s) => n + s.writes.length, 0);
+    return acc;
+  }, {});
+
+  const trail = executed
+    .map((s, i) => ({ ...s, idx: i }))
+    .filter((s) => trailLayer === "all" || s.layer === trailLayer);
 
   const scenario = demo.scenario.formula(sliderState);
-  const selectedLayerMeta = layerMeta[selectedLayer];
-  const SelectedLayerIcon = selectedLayerMeta.icon;
+
+  const togglePlay = () => {
+    if (step >= total) setStep(0);
+    setPlaying((p) => !p);
+  };
+  const goto = (n) => {
+    setPlaying(false);
+    setStep(Math.max(0, Math.min(n, total)));
+  };
 
   return (
-    <main className={`app-shell theme-${demo.accent}`}>
-      <section className="hero">
-        <div>
-          <div className="kicker">Databricks Apps · interactive architecture prototypes</div>
-          <h1>Data + AI native apps: art of the possible</h1>
-          <p>
-            Three front-end React demos showing app UX, architecture layers, agent behavior,
-            analytical reasoning, simulation, workflow state, and writeback.
-          </p>
+    <main className={`shell theme-${demo.accent}`}>
+      <header className="masthead">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true" />
+          Databricks Apps
         </div>
-        <div className="hero-card">
-          <Sparkles size={22} />
-          <strong>Shared design language</strong>
-          <span>Click layers, run the workflow trace, tune the simulator, and inspect writeback.</span>
-        </div>
-      </section>
+        <div className="eyebrow">Art of the possible · interactive prototypes</div>
+        <h1>Watch a data + AI native app actually run.</h1>
+        <p className="lede">
+          Three Databricks App demos. Press play and follow the decision: each step writes a
+          durable record, fans out across the stack, and lands in the ledger.
+        </p>
+      </header>
 
       <nav className="demo-tabs" aria-label="Demo selector">
         {demos.map((item) => (
@@ -274,177 +295,153 @@ function App() {
         ))}
       </nav>
 
-      <section className="title-grid">
+      <section className="title-row">
         <div className="title-copy">
-          <div className="eyebrow">{demo.eyebrow}</div>
           <h2>{demo.title}</h2>
           <p>{demo.subtitle}</p>
           <div className="chips">
-            <span><CircleDot size={15} /> Goal: {demo.goal}</span>
-            <span><Workflow size={15} /> {demo.mode}</span>
+            <span><CircleDot size={14} /> {demo.goal}</span>
+            <span><Workflow size={14} /> {demo.mode}</span>
           </div>
         </div>
-        <div className="metric-card">
-          <div className="metric-top">
-            <Activity size={20} />
-            <span>{demo.status}</span>
-          </div>
+        <div className="metric-chip">
+          <div className="metric-top"><Activity size={16} /> {demo.status}</div>
           <strong>{demo.metricValue}</strong>
           <small>{demo.metricLabel}</small>
         </div>
       </section>
 
-      <section className="legend-panel">
-        {Object.entries(layerMeta).map(([key, meta]) => {
-          const Icon = meta.icon;
-          return (
-            <button
-              key={key}
-              className={`legend-chip ${meta.colorClass} ${selectedLayer === key ? "selected" : ""}`}
-              onClick={() => setSelectedLayer(key)}
-            >
-              <Icon size={17} />
-              <span>{meta.label}</span>
+      {/* ---------- The run: day-in-the-life step-through ---------- */}
+      <section className="run">
+        <div className="run-header">
+          <div>
+            <span className="section-label">Day in the life</span>
+            <h3>Step the app through its decision</h3>
+          </div>
+          <div className="transport">
+            <button className="primary" onClick={togglePlay}>
+              {playing ? <Pause size={15} /> : <Play size={15} />} {playing ? "Pause" : "Play"}
             </button>
-          );
-        })}
-      </section>
-
-      <section className="architecture-grid">
-        <div className="panel large-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="section-label">Layered architecture</span>
-              <h3>Infrastructure, data, logic, and user layers</h3>
-            </div>
-            <div className={`layer-pill ${selectedLayerMeta.colorClass}`}>
-              <SelectedLayerIcon size={16} /> {selectedLayerMeta.label}
-            </div>
-          </div>
-
-          <div className="layer-stack">
-            {demo.cards.map((card) => {
-              const meta = layerMeta[card.layer];
-              const Icon = meta.icon;
-              return (
-                <button
-                  key={card.title}
-                  className={`layer-card ${meta.colorClass} ${selectedLayer === card.layer ? "active" : ""}`}
-                  onMouseEnter={() => setSelectedLayer(card.layer)}
-                  onClick={() => setSelectedLayer(card.layer)}
-                >
-                  <div className="layer-icon"><Icon size={22} /></div>
-                  <div>
-                    <strong>{card.title}</strong>
-                    <p>{card.body}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="layer-explainer">
-            <strong>{selectedLayerMeta.label}</strong>
-            <span>{selectedLayerMeta.short}</span>
+            <button onClick={() => goto(step - 1)} disabled={step === 0}>Back</button>
+            <button onClick={() => goto(step + 1)} disabled={step >= total}>Forward</button>
+            <button onClick={() => goto(0)}><RefreshCcw size={14} /> Reset</button>
+            <span className="progress"><strong>{step}</strong> / {total} steps</span>
           </div>
         </div>
 
-        <div className="panel">
-          <div className="panel-heading compact">
-            <div>
-              <span className="section-label">Interactive graph</span>
-              <h3>Capability path</h3>
-            </div>
-            <Network size={20} />
-          </div>
-          <div className="capability-graph">
-            {demo.graph.map(([from, to, layer], idx) => {
-              const meta = layerMeta[layer];
-              const active = selectedNode === idx;
-              return (
-                <button
-                  key={`${from}-${to}-${idx}`}
-                  className={`edge-row ${meta.colorClass} ${active ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedNode(idx);
-                    setSelectedLayer(layer);
-                  }}
-                >
-                  <span>{from}</span>
-                  <ArrowRight size={16} />
-                  <span>{to}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="node-details">
-            {selectedNode === null ? (
-              <span>Click a path to inspect the layer that owns it.</span>
-            ) : (
-              <span>
-                <strong>{demo.graph[selectedNode][0]}</strong> hands off to <strong>{demo.graph[selectedNode][1]}</strong> through the {layerMeta[demo.graph[selectedNode][2]].label.toLowerCase()}.
-              </span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="workflow-grid">
-        <div className="panel large-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="section-label">Step-through trace</span>
-              <h3>What happens when the app runs?</h3>
-            </div>
-            <div className="transport">
-              <button onClick={() => setPlaying((p) => !p)} aria-label={playing ? "Pause" : "Play"}>
-                {playing ? <Pause size={16} /> : <Play size={16} />}
-                {playing ? "Pause" : "Play"}
+        <div className="step-strip">
+          {demo.steps.map((s, idx) => {
+            const meta = layerMeta[s.layer];
+            const n = idx + 1;
+            const active = n === step;
+            const passed = n < step;
+            return (
+              <button
+                key={s.label}
+                className={`step ${meta.colorClass} ${active ? "active" : ""} ${passed ? "passed" : ""}`}
+                onClick={() => goto(n)}
+              >
+                <span className="step-num">
+                  {passed ? <CheckCircle2 size={15} /> : active ? <CircleDot size={15} /> : n}
+                </span>
+                <span className="step-label">{s.label}</span>
               </button>
-              <button onClick={() => setStep((s) => clampStep(s - 1, demo.steps))}>Back</button>
-              <button onClick={() => setStep((s) => clampStep(s + 1, demo.steps))}>Forward</button>
-              <button onClick={() => { setStep(0); setPlaying(false); }}><RefreshCcw size={15} /> Reset</button>
+            );
+          })}
+        </div>
+
+        <div className="run-body">
+          {/* Side-effect fan-out */}
+          <div className="fanout">
+            <div className={`orchestrator ${firingLayer ? "firing" : ""}`} key={`orch-${step}`}>
+              <Zap size={16} />
+              <strong>Orchestrator</strong>
+              <span>{currentStep ? currentStep.label : "idle"}</span>
+            </div>
+            <div className="fan-line" />
+            <div className="fan-systems">
+              {layerOrder.map((layer) => {
+                const meta = layerMeta[layer];
+                const Icon = meta.icon;
+                const fired = firedLayers.has(layer);
+                const isFiring = firingLayer === layer;
+                return (
+                  <div
+                    key={isFiring ? `${layer}-${step}` : layer}
+                    className={`fan-card ${meta.colorClass} ${fired ? "fired" : ""} ${isFiring ? "firing" : ""}`}
+                  >
+                    <div className="fan-dot" />
+                    <Icon size={18} />
+                    <strong>{meta.label}</strong>
+                    <small>{fired ? `${layerCounts[layer]} records` : "—"}</small>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div className="timeline">
-            {demo.steps.map((s, idx) => {
-              const meta = layerMeta[s.layer];
-              return (
-                <button
-                  key={s.label}
-                  className={`timeline-step ${meta.colorClass} ${idx === step ? "active" : ""} ${idx < step ? "done" : ""}`}
-                  onClick={() => { setStep(idx); setSelectedLayer(s.layer); }}
-                >
-                  <span>{idx < step ? <CheckCircle2 size={16} /> : idx === step ? <CircleDot size={16} /> : idx + 1}</span>
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className={`active-step ${layerMeta[currentStep.layer].colorClass}`}>
-            <div>
-              <span className="section-label">Current step</span>
-              <h3>{currentStep.label}</h3>
-              <p>{currentStep.detail}</p>
+          {/* Narration + dark trail */}
+          <div className="run-detail">
+            <div className={`narration ${currentStep ? layerMeta[currentStep.layer].colorClass : ""}`}>
+              {currentStep ? (
+                <>
+                  <div className="narration-label">
+                    Step {step} · {currentStep.label}
+                  </div>
+                  <p>{currentStep.detail}</p>
+                </>
+              ) : (
+                <>
+                  <div className="narration-label">Ready</div>
+                  <p>Press <strong>Play</strong> or step forward. Each step writes durable records and lights up the layer it touches.</p>
+                </>
+              )}
             </div>
-            <div className="writeback-list">
-              <strong>Writeback</strong>
-              {currentStep.writes.map((w) => <span key={w}>{w}</span>)}
+
+            <div className="trail-tabs">
+              {["all", ...layerOrder].map((l) => {
+                const label = l === "all" ? "all" : layerMeta[l].label.toLowerCase();
+                const hasUpdate = l !== "all" && firingLayer === l;
+                return (
+                  <button
+                    key={l}
+                    className={`trail-tab ${trailLayer === l ? "active" : ""} ${hasUpdate ? "has-update" : ""}`}
+                    onClick={() => setTrailLayer(l)}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="trail-panel">
+              {trail.length === 0 ? (
+                <div className="trail-empty">
+                  {step === 0 ? "// no records written yet — start the run" : "// no records on this layer yet"}
+                </div>
+              ) : (
+                trail.map((s) => (
+                  <div className={`trail-line ${s.idx === step - 1 ? "fresh" : ""}`} key={s.idx}>
+                    <span className="t-time">[{stamp(s.idx)}]</span>{" "}
+                    <span className={`t-event tcol-${s.layer}`}>{eventName(s)}</span>{" "}
+                    <span className="t-fields">{s.writes.join(" · ")}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
+      </section>
 
-        <div className="panel">
-          <div className="panel-heading compact">
+      {/* ---------- Controls + ledger ---------- */}
+      <section className="lower-grid">
+        <div className="panel scenario-panel">
+          <div className="panel-heading">
             <div>
               <span className="section-label">Scenario control</span>
               <h3>{demo.scenario.title}</h3>
             </div>
-            <GitBranch size={20} />
+            <GitBranch size={18} />
           </div>
-
           <div className="sliders">
             {demo.scenario.sliders.map((slider) => (
               <label key={slider.key}>
@@ -460,38 +457,117 @@ function App() {
               </label>
             ))}
           </div>
-
           <div className="scenario-results">
             <div><strong>{scenario.outcome}</strong><span>{demo.scenario.labels.outcome}</span></div>
             <div><strong>{scenario.risk}</strong><span>{demo.scenario.labels.risk}</span></div>
             <div><strong>{scenario.cost}</strong><span>{demo.scenario.labels.cost}</span></div>
           </div>
         </div>
+
+        <div className="panel ledger-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="section-label">Decision ledger</span>
+              <h3>Durable records, written as the app decides</h3>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          {executed.length === 0 ? (
+            <div className="ledger-empty">
+              <CircleDot size={15} /> Run the trace to watch the ledger fill, one decision at a time.
+            </div>
+          ) : (
+            <div className="ledger-grid">
+              {executed.map((s, idx) => (
+                <div key={`${s.label}-${idx}`} className={`ledger-row ${layerMeta[s.layer].colorClass} ${idx === step - 1 ? "fresh" : ""}`}>
+                  <span className="ledger-num">{idx + 1}</span>
+                  <strong>{s.label}</strong>
+                  <div className="ledger-fields">
+                    {s.writes.map((w) => <code key={w}>{w}</code>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
-      <section className="panel ledger-panel">
-        <div className="panel-heading">
-          <div>
-            <span className="section-label">Decision ledger</span>
-            <h3>Comments, decisions, risk, next steps, and ground truth</h3>
-          </div>
-          <ShieldCheck size={21} />
-        </div>
-        <div className="ledger-grid">
-          {demo.steps.slice(0, step + 1).map((s, idx) => (
-            <div key={`${s.label}-${idx}`} className={`ledger-row ${layerMeta[s.layer].colorClass}`}>
-              <span>{idx + 1}</span>
-              <strong>{s.label}</strong>
-              <p>{s.writes.join(" · ")}</p>
+      {/* ---------- Architecture, for the curious ---------- */}
+      <details className="arch">
+        <summary>
+          <span className="arch-summary-left">
+            <Layers3 size={17} />
+            <span>
+              <strong>Architecture, for the curious</strong>
+              <small>The four layers and the capability graph behind the run</small>
+            </span>
+          </span>
+          <ChevronRight className="arch-chevron" size={18} />
+        </summary>
+
+        <div className="arch-body">
+          <div className="stack-wrap">
+            <div className="stack-col">
+              {layerOrder.map((layer) => {
+                const meta = layerMeta[layer];
+                const Icon = meta.icon;
+                return (
+                  <button
+                    key={layer}
+                    className={`stack-band ${meta.colorClass} ${archLayer === layer ? "active" : ""}`}
+                    onMouseEnter={() => setArchLayer(layer)}
+                    onClick={() => setArchLayer(layer)}
+                  >
+                    <Icon size={16} />
+                    <span className="stack-band-name">{meta.label} layer</span>
+                    <span className="stack-band-sub">{meta.short}</span>
+                  </button>
+                );
+              })}
             </div>
-          ))}
-        </div>
-        {step < demo.steps.length - 1 && (
-          <div className="ledger-empty">
-            <AlertTriangle size={16} /> Continue the trace to see more durable records.
+            <div className={`stack-panel ${layerMeta[archLayer].colorClass}`}>
+              <div className="stack-panel-eyebrow">{layerMeta[archLayer].label} layer</div>
+              <div className="stack-panel-title">
+                {demo.cards.find((c) => c.layer === archLayer).title}
+              </div>
+              <p className="stack-panel-desc">{demo.cards.find((c) => c.layer === archLayer).body}</p>
+              <div className="stack-role"><strong>Owns:</strong> {layerMeta[archLayer].owns}</div>
+              <div className="stack-steps">
+                <span className="stack-steps-label">Steps on this layer</span>
+                <div className="stack-step-chips">
+                  {demo.steps.filter((s) => s.layer === archLayer).map((s) => (
+                    <span key={s.label}>{s.label}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </section>
+
+          <div className="cap">
+            <div className="cap-heading">
+              <span className="section-label">Capability path</span>
+              <Network size={16} />
+            </div>
+            <div className="cap-graph">
+              {demo.graph.map(([from, to, layer], idx) => {
+                const meta = layerMeta[layer];
+                const active = selectedNode === idx;
+                return (
+                  <button
+                    key={`${from}-${to}-${idx}`}
+                    className={`edge-row ${meta.colorClass} ${active ? "active" : ""}`}
+                    onClick={() => { setSelectedNode(idx); setArchLayer(layer); }}
+                  >
+                    <span>{from}</span>
+                    <ArrowRight size={14} />
+                    <span>{to}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </details>
     </main>
   );
 }
