@@ -724,6 +724,15 @@ function App() {
         </summary>
 
         <div className="arch-body">
+          <div className="device admin-device">
+            <div className="device-bar">
+              <span className="device-dots"><i /><i /><i /></span>
+              <span className="device-url">{demo.id}.databricksapps.com/admin</span>
+              <span className={`device-live ${feedLive ? "on" : ""}`}>
+                <Activity size={12} /> {feedLive ? "streaming" : "paused"}
+              </span>
+            </div>
+            <div className="device-screen admin-screen">
           <section className="adminpanel">
             <div className="admin-statusbar">
               <div className="admin-kpi">
@@ -821,6 +830,8 @@ function App() {
               </div>
             </div>
           </section>
+            </div>
+          </div>
         </div>
       </details>
 

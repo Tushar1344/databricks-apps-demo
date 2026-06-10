@@ -325,7 +325,9 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 
 /* ---------- Day in the life: step-through + command-line trail ---------- */
 .run-collapse .arch-body { padding-top: 18px; }
-.adminpanel { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 16px; padding: 4px; margin: 0; display: grid; gap: 16px; }
+.admin-device { margin: 0; }
+.admin-screen { background: var(--bg-2); }
+.adminpanel { margin: 0; display: grid; gap: 16px; }
 
 /* status bar / KPIs */
 .admin-statusbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
