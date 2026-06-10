@@ -234,6 +234,60 @@ const demos = [
       ["Decision memory", "Audit trail", "data"],
     ],
   },
+  {
+    id: "learfield",
+    showcase: true,
+    eyebrow: "Customer · Learfield",
+    title: "Sponsorship Seller Prospecting",
+    subtitle: "Turn a target brand or category into a ranked, evidence-backed prospect packet — grounded in governed Fanbase data.",
+    goal: "Move sellers from “I have a target brand” to “here are the best school/fanbase opportunities, the evidence, and the outreach narrative.”",
+    mode: "Governed Decision App with an agentic workbench",
+    accent: "learfield",
+    metricLabel: "Time to build a prospect list",
+    metricValue: "−68%",
+    status: "Seller review",
+    agent: "Prospecting agent",
+    users: "Sponsorship sellers, sales managers, insights analysts",
+    interaction: "Select or upload a target brand list, review the agent's ranked school/audience fits and talking points, then export a prospect packet.",
+    services: ["Fanbase data", "Genie", "AI/BI Dashboards", "Model Serving", "Unity Catalog", "Lakebase", "CRM"],
+    cards: [
+      { layer: "user", title: "Seller workbench", body: "Brand-list intake, ranked opportunities, evidence drill-down, talking points, and prospect-packet export." },
+      { layer: "logic", title: "Match & scoring engine", body: "Match brands to Fanbase segments → score school / market / audience fit → explain top drivers → draft talking points." },
+      { layer: "data", title: "Governed Fanbase layer", body: "Fan segments, school audiences, donor & ticketing behavior, geography, sponsor penetration, and campaign precedent." },
+      { layer: "infra", title: "Databricks resources", body: "Apps UI, Genie, Model Serving (scoring), Unity Catalog (governed definitions), Lakebase (run state + artifacts)." },
+    ],
+    steps: [
+      { label: "Select brands", layer: "user", actor: "Human · sponsorship seller", detail: "Seller uploads or selects a target brand list; a prospecting run opens and territory and permissions are checked.", writes: ["run_id", "brand_list", "category_mapping", "territory"] },
+      { label: "Validate", layer: "logic", actor: "Agent · Unity Catalog", detail: "The agent dedupes accounts, maps categories, and applies suppression rules so restricted or unavailable data never reaches scoring.", writes: ["deduped_accounts", "category_match", "suppressed", "data_freshness"] },
+      { label: "Match audience", layer: "logic", actor: "Agent · Genie", detail: "The agent matches each brand to governed Fanbase segments and school audiences through Genie.", writes: ["segment_overlap", "audience_size", "mapping_confidence"] },
+      { label: "Score fit", layer: "logic", actor: "Agent · Model Serving", detail: "Model Serving scores school / market / audience fit and explains the top drivers behind every rank.", writes: ["fit_score", "score_drivers", "coverage", "scoring_version"], event: { type: "ask", from: "Prospecting agent", body: "I ranked the top schools by fit and captured why each scored high. Want to review the evidence before I draft talking points?" } },
+      { label: "Draft packet", layer: "logic", actor: "Agent", detail: "The agent generates talking points, an audience-overlap summary, and a source-data snapshot for the top opportunities.", writes: ["talking_points", "overlap_summary", "data_snapshot"] },
+      { label: "Review & export", layer: "user", actor: "Human · sales manager", detail: "Manager edits the packet and approves export; CRM writeback stays manual in v1 so the business can trust the recommendations first.", writes: ["seller_edits", "approval", "export_target"], event: { type: "approval", from: "Prospecting agent", body: "The prospect packet is ready with talking points and evidence. Approve to export it — CRM writeback stays manual in v1." } },
+      { label: "Track outcome", layer: "data", actor: "System · writeback", detail: "Pursued / won / lost / deferred feedback is written back as ground truth to improve future scoring.", writes: ["outreach_status", "outcome_label", "scoring_feedback"] },
+    ],
+    scenario: {
+      title: "Prospect scoring sandbox",
+      sliders: [
+        { key: "audience", label: "Audience fit weight", min: 0, max: 100, value: 62, suffix: "%" },
+        { key: "geography", label: "Geography weight", min: 0, max: 100, value: 45, suffix: "%" },
+        { key: "whitespace", label: "Sponsor whitespace weight", min: 0, max: 100, value: 55, suffix: "%" },
+      ],
+      formula: (v) => ({
+        outcome: Math.min(99, Math.round(40 + v.audience * 0.4 + v.whitespace * 0.18 + v.geography * 0.1)),
+        risk: Math.max(4, Math.round(36 - v.audience * 0.12 - v.geography * 0.1)),
+        cost: Math.round(6 + v.audience * 0.12 + v.whitespace * 0.1),
+      }),
+      labels: { outcome: "top fit score", risk: "coverage risk", cost: "qualified prospects" },
+    },
+    sessions: ["QSR · Region SE", "Banking · Big Ten", "Auto · Pac-12", "Apparel · SEC", "Telecom · ACC", "Grocery · Big 12"],
+    graph: [
+      ["Brand list", "Governed match", "data"],
+      ["Genie audience overlap", "Fit scoring", "logic"],
+      ["Model scoring", "Score drivers", "logic"],
+      ["Prospect packet", "Manager review", "user"],
+      ["Export", "CRM / outcome tracking", "infra"],
+    ],
+  },
 ];
 
 const eventName = (s) => `${s.layer}.${s.label.toLowerCase().replace(/\s+/g, "_")}`;
@@ -275,6 +329,13 @@ function kycBars(v) {
     { name: "PEP", value: Math.round(6 + (100 - v.risk) * 0.08) },
   ];
 }
+function learfieldBars(v) {
+  return [
+    { name: "Audience", value: Math.round(40 + v.audience * 0.55) },
+    { name: "Geography", value: Math.round(28 + v.geography * 0.5) },
+    { name: "Whitespace", value: Math.round(24 + v.whitespace * 0.6) },
+  ];
+}
 
 const tipStyle = {
   fontFamily: "JetBrains Mono, monospace",
@@ -305,13 +366,18 @@ function ScreenVisual({ demo, step, sliderState, scenario }) {
     );
   }
 
-  const isOpt = demo.id === "optimizer";
-  const bars = isOpt ? optimizerBars(sliderState) : kycBars(sliderState);
-  const gaugeValue = isOpt ? scenario.outcome : scenario.risk;
-  const gaugeMax = isOpt ? 250 : 60;
-  const gaugeFill = isOpt ? "#ff3621" : "#2272b4";
-  const gaugeLabel = isOpt ? demo.scenario.labels.outcome : demo.scenario.labels.risk;
-  const barColors = isOpt ? ["#ff3621", "#ff8a76", "#1b3139"] : ["#2272b4", "#00a972", "#445e6b"];
+  const vizConfig = {
+    optimizer: { bars: optimizerBars(sliderState), gauge: scenario.outcome, max: 250, fill: "#ff3621", labelKey: "outcome", colors: ["#ff3621", "#ff8a76", "#1b3139"] },
+    kyc: { bars: kycBars(sliderState), gauge: scenario.risk, max: 60, fill: "#2272b4", labelKey: "risk", colors: ["#2272b4", "#00a972", "#445e6b"] },
+    learfield: { bars: learfieldBars(sliderState), gauge: scenario.outcome, max: 100, fill: "#7c5cff", labelKey: "outcome", colors: ["#7c5cff", "#a78bff", "#4a93d6"] },
+  };
+  const cfg = vizConfig[demo.id] || vizConfig.optimizer;
+  const bars = cfg.bars;
+  const gaugeValue = cfg.gauge;
+  const gaugeMax = cfg.max;
+  const gaugeFill = cfg.fill;
+  const gaugeLabel = demo.scenario.labels[cfg.labelKey];
+  const barColors = cfg.colors;
 
   return (
     <div className="dual-viz">
@@ -374,6 +440,7 @@ function App() {
       label: s.label,
       fields: s.writes,
       records: s.writes.length,
+      approval: s.event?.type === "approval",
     };
   };
 
@@ -448,7 +515,7 @@ function App() {
     return acc;
   }, {});
   const hotActor = feed.length ? feed[0].actorName : null;
-  const pendingApprovals = feed.filter((e) => e.label === "Approve").length;
+  const pendingApprovals = feed.filter((e) => e.approval).length;
   const visibleFeed = feed.filter((e) => feedFilter === "all" || e.type === feedFilter);
   const auditRows = feed.slice(0, 6);
 
@@ -474,6 +541,30 @@ function App() {
   };
 
   /* ---------------------------- Gallery ---------------------------- */
+  const renderTile = (item) => (
+    <button
+      key={item.id}
+      className={`tile theme-${item.accent}`}
+      onClick={() => openApp(item.id)}
+    >
+      <span className="tile-accent" aria-hidden="true" />
+      <div className="tile-head">
+        <span className="tile-eyebrow">{item.eyebrow}</span>
+        <span className="tile-status"><CircleDot size={12} /> {item.status}</span>
+      </div>
+      <h3 className="tile-title">{item.title}</h3>
+      <p className="tile-sub">{item.subtitle}</p>
+      <span className="tile-tag"><Workflow size={13} /> {item.mode}</span>
+      <div className="tile-foot">
+        <div className="tile-metric">
+          <strong>{item.metricValue}</strong>
+          <small>{item.metricLabel}</small>
+        </div>
+        <span className="tile-open">Open app <ArrowRight size={15} /></span>
+      </div>
+    </button>
+  );
+
   if (view === "gallery") {
     return (
       <main className="shell">
@@ -494,31 +585,19 @@ function App() {
         <section className="gallery">
           <span className="section-label">Apps</span>
           <div className="gallery-grid">
-            {demos.map((item) => (
-              <button
-                key={item.id}
-                className={`tile theme-${item.accent}`}
-                onClick={() => openApp(item.id)}
-              >
-                <span className="tile-accent" aria-hidden="true" />
-                <div className="tile-head">
-                  <span className="tile-eyebrow">{item.eyebrow}</span>
-                  <span className="tile-status"><CircleDot size={12} /> {item.status}</span>
-                </div>
-                <h3 className="tile-title">{item.title}</h3>
-                <p className="tile-sub">{item.subtitle}</p>
-                <span className="tile-tag"><Workflow size={13} /> {item.mode}</span>
-                <div className="tile-foot">
-                  <div className="tile-metric">
-                    <strong>{item.metricValue}</strong>
-                    <small>{item.metricLabel}</small>
-                  </div>
-                  <span className="tile-open">Open app <ArrowRight size={15} /></span>
-                </div>
-              </button>
-            ))}
+            {demos.filter((d) => !d.showcase).map((item) => renderTile(item))}
           </div>
         </section>
+
+        {demos.some((d) => d.showcase) && (
+          <section className="gallery showcase">
+            <span className="section-label">Customer showcase</span>
+            <p className="section-note">A real customer scenario, framed as one of these apps — built from Learfield's business loops.</p>
+            <div className="gallery-grid">
+              {demos.filter((d) => d.showcase).map((item) => renderTile(item))}
+            </div>
+          </section>
+        )}
       </main>
     );
   }
