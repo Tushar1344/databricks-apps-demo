@@ -256,6 +256,15 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 .cl-label { font-weight: 700; font-size: 0.86rem; white-space: nowrap; }
 .cl-fields { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; color: inherit; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 .cledger-row.fresh { animation: ledgerIn 0.45s ease; }
+
+/* slimmer audit rows inside the admin panel — fits a 13" screen */
+.adminpanel .cledger { padding: 13px 16px; }
+.adminpanel .cledger-head { margin-bottom: 9px; }
+.adminpanel .cledger-list { gap: 4px; }
+.adminpanel .cledger-row { padding: 4px 10px; gap: 9px; }
+.adminpanel .cl-session { font-size: 0.72rem; padding: 1px 8px; }
+.adminpanel .cl-label { font-size: 0.78rem; }
+.adminpanel .cl-fields { font-size: 0.66rem; }
 @keyframes ledgerIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---------- Architecture (collapsible) ---------- */
