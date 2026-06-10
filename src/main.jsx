@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -17,12 +17,12 @@ import {
   Network,
   Pause,
   Play,
+  Radar,
   RefreshCcw,
   ServerCog,
   ShieldCheck,
   UserRoundCheck,
   Workflow,
-  Zap,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -86,6 +86,7 @@ const demos = [
     metricLabel: "SLA risk avoided",
     metricValue: "$220K",
     status: "Approval required",
+    agent: "Watchtower agent",
     users: "Operations managers, supply-chain analysts, on-call leads",
     interaction: "Watch live risk, open an incident, review the agent's bounded options, approve or reject the fix.",
     services: ["Structured Streaming", "Lakehouse Monitoring", "Genie", "Model Serving", "Lakeflow Jobs", "Unity Catalog", "Lakebase"],
@@ -118,6 +119,7 @@ const demos = [
       }),
       labels: { outcome: "SLA recovery", risk: "residual risk", cost: "incremental cost" },
     },
+    sessions: ["Lane NE-12", "Lane SW-04", "DC Atlanta", "DC Reno", "Order #88213", "Order #90455"],
     graph: [
       ["Streaming events", "Delta tables", "data"],
       ["Genie root cause", "Constrained agent", "logic"],
@@ -137,6 +139,7 @@ const demos = [
     metricLabel: "Expected margin lift",
     metricValue: "+143 bps",
     status: "Scenario review",
+    agent: "Margin agent",
     users: "Category managers, pricing & revenue teams, finance approvers",
     interaction: "Set a margin goal and guardrails, review the agent's recommended plan, approve before any price changes.",
     services: ["Genie", "SQL Warehouse", "Model Serving", "Lakeflow Jobs", "MLflow", "Unity Catalog", "Lakebase"],
@@ -169,6 +172,7 @@ const demos = [
       }),
       labels: { outcome: "margin bps", risk: "customer risk", cost: "promo cost" },
     },
+    sessions: ["Beverages", "Snacks", "Home & Kitchen", "Region West", "Promo Q3", "Apparel"],
     graph: [
       ["Goal memory", "Agent planner", "logic"],
       ["Genie questions", "SQL results", "data"],
@@ -188,6 +192,7 @@ const demos = [
     metricLabel: "Median time to decision",
     metricValue: "2.4 days",
     status: "Awaiting approval",
+    agent: "KYC agent",
     users: "Onboarding ops analysts, compliance officers, approvers",
     interaction: "Pick up a case in your queue, review the agent's draft, then advance the state or loop it back for more info.",
     services: ["Lakebase", "Unity Catalog", "Genie", "Model Serving", "Lakeflow Jobs"],
@@ -219,6 +224,7 @@ const demos = [
       }),
       labels: { outcome: "auto-cleared %", risk: "residual risk", cost: "escalations / wk" },
     },
+    sessions: ["Case #4821", "Case #4822", "Case #5103", "Case #5109", "Vela Ltd", "N. Okoro"],
     graph: [
       ["Application", "Doc verification", "user"],
       ["Agent extract", "Ops analyst", "logic"],
@@ -231,7 +237,17 @@ const demos = [
 ];
 
 const eventName = (s) => `${s.layer}.${s.label.toLowerCase().replace(/\s+/g, "_")}`;
-const stamp = (i) => `03:14:${String(2 + i * 3).padStart(2, "0")}`;
+const stripPrefix = (actor) =>
+  actor.replace(/^(Agent|Human|System)\s·\s/, "").replace(/\s*\(agent-assist\)/, "");
+const clockNow = () => new Date().toLocaleTimeString("en-GB");
+// Resolve a step's actor into { name, type } for the system panel.
+// Agent-assist steps are credited to the app's named agent; bare "Agent" too.
+const resolveActor = (actor, agentName) => {
+  if (actor.includes("agent-assist") || actor === "Agent") return { name: agentName, type: "agent" };
+  if (actor.startsWith("Agent")) return { name: stripPrefix(actor), type: "agent" };
+  if (actor.startsWith("Human")) return { name: stripPrefix(actor), type: "user" };
+  return { name: stripPrefix(actor), type: "system" };
+};
 
 /* ---- chart data, reactive to sandbox sliders + the current step ---- */
 const OPS_THRESHOLD = 78;
@@ -330,12 +346,36 @@ function App() {
   const [activeDemoId, setActiveDemoId] = useState("ops");
   const [step, setStep] = useState(0); // 0 = idle, 1..N = executed steps
   const [playing, setPlaying] = useState(false);
-  const [trailLayer, setTrailLayer] = useState("all");
   const [archLayer, setArchLayer] = useState("logic");
   const [selectedNode, setSelectedNode] = useState(null);
 
+  // ---- System panel: live activity feed (decoupled from the device run) ----
+  const [feedLive, setFeedLive] = useState(true);
+  const [feed, setFeed] = useState([]);
+  const [feedFilter, setFeedFilter] = useState("all");
+  const [recordsTotal, setRecordsTotal] = useState(0);
+  const seqRef = useRef(0);
+
   const demo = useMemo(() => demos.find((d) => d.id === activeDemoId), [activeDemoId]);
   const total = demo.steps.length;
+
+  const makeEvent = () => {
+    const s = demo.steps[Math.floor(Math.random() * demo.steps.length)];
+    const session = demo.sessions[Math.floor(Math.random() * demo.sessions.length)];
+    const who = resolveActor(s.actor, demo.agent);
+    seqRef.current += 1;
+    return {
+      id: seqRef.current,
+      time: clockNow(),
+      session,
+      actorName: who.name,
+      type: who.type,
+      layer: s.layer,
+      label: s.label,
+      fields: s.writes,
+      records: s.writes.length,
+    };
+  };
 
   const initialSliders = useMemo(
     () => Object.fromEntries(demo.scenario.sliders.map((s) => [s.key, s.value])),
@@ -346,10 +386,15 @@ function App() {
   useEffect(() => {
     setStep(0);
     setPlaying(false);
-    setTrailLayer("all");
     setArchLayer("logic");
     setSelectedNode(null);
     setSliderState(initialSliders);
+    // reset + seed the live feed for the new app
+    seqRef.current = 0;
+    const seed = Array.from({ length: 4 }, makeEvent).reverse();
+    setFeed(seed);
+    setRecordsTotal(seed.reduce((n, e) => n + e.records, 0));
+    setFeedLive(true);
   }, [activeDemoId, initialSliders]);
 
   useEffect(() => {
@@ -366,21 +411,46 @@ function App() {
     return () => window.clearInterval(timer);
   }, [playing, total]);
 
+  // live activity stream — synthetic concurrent events across sessions
+  useEffect(() => {
+    if (!feedLive) return;
+    const timer = window.setInterval(() => {
+      const ev = makeEvent();
+      setFeed((f) => [ev, ...f].slice(0, 14));
+      setRecordsTotal((n) => n + ev.records);
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, [feedLive, activeDemoId]);
+
   const executed = demo.steps.slice(0, step);
   const currentStep = step > 0 ? demo.steps[step - 1] : null;
   const stepMeta = currentStep ? layerMeta[currentStep.layer] : null;
   const recordCount = executed.reduce((n, s) => n + s.writes.length, 0);
   const scenario = demo.scenario.formula(sliderState);
 
-  const firingLayer = currentStep ? currentStep.layer : null;
-  const firedLayers = new Set(executed.map((s) => s.layer));
-  const layerCounts = layerOrder.reduce((acc, l) => {
-    acc[l] = executed.filter((s) => s.layer === l).reduce((n, s) => n + s.writes.length, 0);
+  // ---- System panel derivations ----
+  const roster = useMemo(() => {
+    const byType = { agent: new Map(), user: new Map() };
+    demo.steps.forEach((s) => {
+      const who = resolveActor(s.actor, demo.agent);
+      if (who.type === "agent" || who.type === "user") {
+        if (!byType[who.type].has(who.name)) byType[who.type].set(who.name, s.layer);
+      }
+    });
+    return {
+      agents: [...byType.agent].map(([name, layer]) => ({ name, layer })),
+      users: [...byType.user].map(([name, layer]) => ({ name, layer })),
+    };
+  }, [demo]);
+
+  const loadByActor = feed.reduce((acc, e) => {
+    acc[e.actorName] = (acc[e.actorName] || 0) + 1;
     return acc;
   }, {});
-  const trail = executed
-    .map((s, i) => ({ ...s, idx: i }))
-    .filter((s) => trailLayer === "all" || s.layer === trailLayer);
+  const hotActor = feed.length ? feed[0].actorName : null;
+  const pendingApprovals = feed.filter((e) => e.label === "Approve").length;
+  const visibleFeed = feed.filter((e) => feedFilter === "all" || e.type === feedFilter);
+  const auditRows = feed.slice(0, 6);
 
   const togglePlay = () => {
     if (step >= total) setStep(0);
@@ -640,157 +710,115 @@ function App() {
         </section>
       </div>
 
-      {/* ---------- Day in the life: step-through + command-line trail ---------- */}
-      <details className="arch run-collapse">
+      {/* ---------- System panel: live activity across every user, agent & job ---------- */}
+      <details className="arch run-collapse" open>
         <summary>
           <span className="arch-summary-left">
-            <Workflow size={17} />
+            <Radar size={17} />
             <span>
-              <strong>Day in the life</strong>
-              <small>Step the app through its decision and watch each action break down on the command line</small>
+              <strong>System panel</strong>
+              <small>Live activity across every user, agent, and job in this app</small>
             </span>
           </span>
           <ChevronRight className="arch-chevron" size={18} />
         </summary>
 
         <div className="arch-body">
-          <section className="run">
-            <div className="run-header">
-              <div>
-                <span className="section-label">Step-through</span>
-                <h3>Each step writes a durable record</h3>
+          <section className="adminpanel">
+            <div className="admin-statusbar">
+              <div className="admin-kpi">
+                <span className="kpi-num">{roster.agents.length}</span>
+                <span className="kpi-label"><Bot size={12} /> active agents</span>
               </div>
-              <div className="transport">
-                <button className="primary" onClick={togglePlay}>
-                  {playing ? <Pause size={15} /> : <Play size={15} />} {playing ? "Pause" : "Play"}
-                </button>
-                <button onClick={() => goto(step - 1)} disabled={step === 0}>Back</button>
-                <button onClick={() => goto(step + 1)} disabled={step >= total}>Forward</button>
-                <button onClick={() => goto(0)}><RefreshCcw size={14} /> Reset</button>
-                <span className="progress"><strong>{step}</strong> / {total} steps</span>
+              <div className="admin-kpi">
+                <span className="kpi-num">{roster.users.length}</span>
+                <span className="kpi-label"><UserRoundCheck size={12} /> active users</span>
+              </div>
+              <div className="admin-kpi">
+                <span className="kpi-num">{pendingApprovals}</span>
+                <span className="kpi-label"><ShieldCheck size={12} /> pending approvals</span>
+              </div>
+              <div className="admin-kpi">
+                <span className="kpi-num">{recordsTotal.toLocaleString()}</span>
+                <span className="kpi-label"><Database size={12} /> records written</span>
               </div>
             </div>
 
-            <div className="step-strip">
-              {demo.steps.map((s, idx) => {
-                const meta = layerMeta[s.layer];
-                const n = idx + 1;
-                const active = n === step;
-                const passed = n < step;
-                return (
-                  <button
-                    key={s.label}
-                    className={`step ${meta.colorClass} ${active ? "active" : ""} ${passed ? "passed" : ""}`}
-                    onClick={() => goto(n)}
-                  >
-                    <span className="step-num">
-                      {passed ? <CheckCircle2 size={15} /> : active ? <CircleDot size={15} /> : n}
-                    </span>
-                    <span className="step-label">{s.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="run-body">
-              <div className="fanout">
-                <div className={`orchestrator ${firingLayer ? "firing" : ""}`} key={`orch-${step}`}>
-                  <Zap size={16} />
-                  <strong>Orchestrator</strong>
-                  <span>{currentStep ? currentStep.label : "idle"}</span>
-                </div>
-                <div className="fan-line" />
-                <div className="fan-systems">
-                  {layerOrder.map((layer) => {
-                    const meta = layerMeta[layer];
-                    const Icon = meta.icon;
-                    const fired = firedLayers.has(layer);
-                    const isFiring = firingLayer === layer;
-                    return (
-                      <div
-                        key={isFiring ? `${layer}-${step}` : layer}
-                        className={`fan-card ${meta.colorClass} ${fired ? "fired" : ""} ${isFiring ? "firing" : ""}`}
-                      >
-                        <div className="fan-dot" />
-                        <Icon size={18} />
-                        <strong>{meta.label}</strong>
-                        <small>{fired ? `${layerCounts[layer]} records` : "—"}</small>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="run-detail">
-                <div className={`narration ${currentStep ? layerMeta[currentStep.layer].colorClass : ""}`}>
-                  {currentStep ? (
-                    <>
-                      <div className="narration-label">
-                        Step {step} · {currentStep.label}
-                        {currentStep.actor ? <span className="narration-actor">{currentStep.actor}</span> : null}
-                      </div>
-                      <p>{currentStep.detail}</p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="narration-label">Ready</div>
-                      <p>Press <strong>Play</strong> or step forward. Each step writes durable records and lights up the layer it touches.</p>
-                    </>
-                  )}
-                </div>
-
-                <div className="trail-tabs">
-                  {["all", ...layerOrder].map((l) => {
-                    const label = l === "all" ? "all" : layerMeta[l].label.toLowerCase();
-                    const hasUpdate = l !== "all" && firingLayer === l;
-                    return (
+            <div className="admin-grid">
+              <div className="admin-feed">
+                <div className="admin-feed-head">
+                  <span className="section-label">Live activity</span>
+                  <div className="trail-tabs">
+                    {[["all", "all"], ["agent", "agents"], ["user", "people"], ["system", "systems"]].map(([k, label]) => (
                       <button
-                        key={l}
-                        className={`trail-tab ${trailLayer === l ? "active" : ""} ${hasUpdate ? "has-update" : ""}`}
-                        onClick={() => setTrailLayer(l)}
+                        key={k}
+                        className={`trail-tab ${feedFilter === k ? "active" : ""}`}
+                        onClick={() => setFeedFilter(k)}
                       >
                         {label}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+                  <button className="feed-toggle" onClick={() => setFeedLive((v) => !v)}>
+                    {feedLive ? <Pause size={13} /> : <Play size={13} />} {feedLive ? "Pause" : "Resume"}
+                  </button>
                 </div>
-                <div className="trail-panel">
-                  {trail.length === 0 ? (
-                    <div className="trail-empty">
-                      {step === 0 ? "// no records written yet — start the run" : "// no records on this layer yet"}
-                    </div>
+                <div className="feed-panel">
+                  {visibleFeed.length === 0 ? (
+                    <div className="feed-empty">// no {feedFilter === "all" ? "" : `${feedFilter} `}activity in view</div>
                   ) : (
-                    trail.map((s) => (
-                      <div className={`trail-line ${s.idx === step - 1 ? "fresh" : ""}`} key={s.idx}>
-                        <span className="t-time">[{stamp(s.idx)}]</span>{" "}
-                        <span className={`t-event tcol-${s.layer}`}>{eventName(s)}</span>{" "}
-                        <span className="t-fields">{s.writes.join(" · ")}</span>
+                    visibleFeed.map((e, i) => (
+                      <div className={`feed-line ${i === 0 ? "fresh" : ""}`} key={e.id}>
+                        <span className="f-time">{e.time}</span>
+                        <span className="f-session">{e.session}</span>
+                        <span className={`f-actor actor-${e.type}`}>{e.actorName}</span>
+                        <span className={`f-event tcol-${e.layer}`}>{eventName(e)}</span>
+                        <span className="f-fields">{e.fields.join(" · ")}</span>
                       </div>
                     ))
                   )}
                 </div>
               </div>
+
+              <aside className="admin-roster">
+                <div className="roster-group">
+                  <div className="roster-head"><Bot size={14} /> Agents</div>
+                  {roster.agents.map((a) => (
+                    <div key={a.name} className={`roster-row ${layerMeta[a.layer].colorClass}`}>
+                      <span className={`live-dot ${hotActor === a.name ? "hot" : ""}`} />
+                      <span className="roster-name">{a.name}</span>
+                      <span className="roster-load">{loadByActor[a.name] || 0}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="roster-group">
+                  <div className="roster-head"><UserRoundCheck size={14} /> People</div>
+                  {roster.users.map((u) => (
+                    <div key={u.name} className={`roster-row ${layerMeta[u.layer].colorClass}`}>
+                      <span className={`live-dot ${hotActor === u.name ? "hot" : ""}`} />
+                      <span className="roster-name">{u.name}</span>
+                      <span className="roster-load">{loadByActor[u.name] || 0}</span>
+                    </div>
+                  ))}
+                </div>
+              </aside>
             </div>
 
             <div className="cledger">
               <div className="cledger-head">
                 <ShieldCheck size={15} />
-                <span className="section-label">Decision ledger</span>
-                <span className="cledger-count">{recordCount} records</span>
+                <span className="section-label">Audit trail</span>
+                <span className="cledger-count">{recordsTotal.toLocaleString()} records</span>
               </div>
-              {executed.length === 0 ? (
-                <div className="cledger-empty">Run the app to fill the ledger.</div>
-              ) : (
-                <div className="cledger-list">
-                  {executed.map((s, idx) => (
-                    <div key={`${s.label}-${idx}`} className={`cledger-row ${layerMeta[s.layer].colorClass} ${idx === step - 1 ? "fresh" : ""}`}>
-                      <span className="cl-num">{idx + 1}</span>
-                      <span className="cl-label">{s.label}</span>
-                      <span className="cl-fields">{s.writes.join(" · ")}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="cledger-list">
+                {auditRows.map((e) => (
+                  <div key={e.id} className={`cledger-row ${layerMeta[e.layer].colorClass}`}>
+                    <span className="cl-session">{e.session}</span>
+                    <span className="cl-label">{e.label}</span>
+                    <span className="cl-fields">{e.fields.join(" · ")}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         </div>
