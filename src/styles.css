@@ -357,7 +357,7 @@ h1, h2, h3 { letter-spacing: -0.025em; }
 .feed-panel {
   background: var(--ink-panel); border-radius: 12px; padding: 11px 13px;
   font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.74rem; line-height: 1.65;
-  min-height: 220px; max-height: 300px; overflow-y: auto; color: #e8e5de; display: grid; gap: 4px; align-content: start;
+  height: 270px; overflow: hidden; color: #e8e5de; display: grid; gap: 4px; align-content: start;
 }
 .feed-empty { color: #8a9499; font-style: italic; }
 .feed-line { display: grid; grid-template-columns: auto auto auto auto minmax(0, 1fr); gap: 9px; align-items: baseline; white-space: nowrap; }
