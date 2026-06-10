@@ -237,32 +237,32 @@ const demos = [
   {
     id: "learfield",
     showcase: true,
-    eyebrow: "Customer · Learfield",
-    title: "Sponsorship Seller Prospecting",
-    subtitle: "Turn a target brand or category into a ranked, evidence-backed prospect packet — grounded in governed Fanbase data.",
-    goal: "Move sellers from “I have a target brand” to “here are the best school/fanbase opportunities, the evidence, and the outreach narrative.”",
+    eyebrow: "Customer · LEARFIELD",
+    title: "Fanbase Sponsorship Prospecting",
+    subtitle: "Connecting brands to fans: turn a target brand or category into a ranked, evidence-backed prospect packet — grounded in governed Fanbase data.",
+    goal: "Power fan connections — move sellers from “I have a target brand” to “here are the best school and fanbase opportunities, the evidence, and the outreach narrative.”",
     mode: "Governed Decision App with an agentic workbench",
     accent: "learfield",
     metricLabel: "Time to build a prospect list",
     metricValue: "−68%",
     status: "Seller review",
-    agent: "Prospecting agent",
-    users: "Sponsorship sellers, sales managers, insights analysts",
-    interaction: "Select or upload a target brand list, review the agent's ranked school/audience fits and talking points, then export a prospect packet.",
-    services: ["Fanbase data", "Genie", "AI/BI Dashboards", "Model Serving", "Unity Catalog", "Lakebase", "CRM"],
+    agent: "Fanbase agent",
+    users: "Sponsorship sellers, multimedia rights teams, insights analysts",
+    interaction: "Select or upload a target brand list, review the Fanbase agent's ranked school and audience fits and talking points, then export a prospect packet.",
+    services: ["Fanbase data", "Paciolan ticketing", "Genie", "Model Serving", "Unity Catalog", "Lakebase", "CRM"],
     cards: [
-      { layer: "user", title: "Seller workbench", body: "Brand-list intake, ranked opportunities, evidence drill-down, talking points, and prospect-packet export." },
-      { layer: "logic", title: "Match & scoring engine", body: "Match brands to Fanbase segments → score school / market / audience fit → explain top drivers → draft talking points." },
-      { layer: "data", title: "Governed Fanbase layer", body: "Fan segments, school audiences, donor & ticketing behavior, geography, sponsor penetration, and campaign precedent." },
+      { layer: "user", title: "Seller workbench", body: "Brand-list intake, ranked fanbase opportunities, evidence drill-down, talking points, and prospect-packet export." },
+      { layer: "logic", title: "Match & scoring engine", body: "Match brands to governed Fanbase segments → score school / market / audience fit → explain top drivers → draft talking points." },
+      { layer: "data", title: "Governed Fanbase layer", body: "Fan segments, school audiences, donor & ticketing behavior, geography, sponsor penetration, and campaign precedent across 150M+ fan records." },
       { layer: "infra", title: "Databricks resources", body: "Apps UI, Genie, Model Serving (scoring), Unity Catalog (governed definitions), Lakebase (run state + artifacts)." },
     ],
     steps: [
-      { label: "Select brands", layer: "user", actor: "Human · sponsorship seller", detail: "Seller uploads or selects a target brand list; a prospecting run opens and territory and permissions are checked.", writes: ["run_id", "brand_list", "category_mapping", "territory"] },
-      { label: "Validate", layer: "logic", actor: "Agent · Unity Catalog", detail: "The agent dedupes accounts, maps categories, and applies suppression rules so restricted or unavailable data never reaches scoring.", writes: ["deduped_accounts", "category_match", "suppressed", "data_freshness"] },
-      { label: "Match audience", layer: "logic", actor: "Agent · Genie", detail: "The agent matches each brand to governed Fanbase segments and school audiences through Genie.", writes: ["segment_overlap", "audience_size", "mapping_confidence"] },
-      { label: "Score fit", layer: "logic", actor: "Agent · Model Serving", detail: "Model Serving scores school / market / audience fit and explains the top drivers behind every rank.", writes: ["fit_score", "score_drivers", "coverage", "scoring_version"], event: { type: "ask", from: "Prospecting agent", body: "I ranked the top schools by fit and captured why each scored high. Want to review the evidence before I draft talking points?" } },
+      { label: "Select brands", layer: "user", actor: "Human · sponsorship seller", detail: "Seller uploads or selects a target brand list; a prospecting run opens and seller territory and permissions are checked.", writes: ["run_id", "brand_list", "category_mapping", "territory"] },
+      { label: "Validate", layer: "logic", actor: "Agent · Unity Catalog", detail: "The Fanbase agent dedupes accounts, maps categories, and applies suppression rules so restricted or unavailable fan data never reaches scoring.", writes: ["deduped_accounts", "category_match", "suppressed", "data_freshness"] },
+      { label: "Match audience", layer: "logic", actor: "Agent · Genie", detail: "The agent matches each brand to governed Fanbase segments and school audiences — fan affinity, donor and ticketing behavior, geography — through Genie.", writes: ["segment_overlap", "audience_size", "mapping_confidence"] },
+      { label: "Score fit", layer: "logic", actor: "Agent · Model Serving", detail: "Model Serving scores school / market / audience fit and sponsor whitespace, and explains the top drivers behind every rank.", writes: ["fit_score", "score_drivers", "coverage", "scoring_version"], event: { type: "ask", from: "Fanbase agent", body: "I ranked the top schools by fanbase fit and captured why each scored high. Want to review the evidence before I draft talking points?" } },
       { label: "Draft packet", layer: "logic", actor: "Agent", detail: "The agent generates talking points, an audience-overlap summary, and a source-data snapshot for the top opportunities.", writes: ["talking_points", "overlap_summary", "data_snapshot"] },
-      { label: "Review & export", layer: "user", actor: "Human · sales manager", detail: "Manager edits the packet and approves export; CRM writeback stays manual in v1 so the business can trust the recommendations first.", writes: ["seller_edits", "approval", "export_target"], event: { type: "approval", from: "Prospecting agent", body: "The prospect packet is ready with talking points and evidence. Approve to export it — CRM writeback stays manual in v1." } },
+      { label: "Review & export", layer: "user", actor: "Human · sales manager", detail: "Manager edits the packet and approves export; CRM writeback stays manual in v1 so partners can trust the recommendations first.", writes: ["seller_edits", "approval", "export_target"], event: { type: "approval", from: "Fanbase agent", body: "The prospect packet is ready with talking points and fanbase evidence. Approve to export it — CRM writeback stays manual in v1." } },
       { label: "Track outcome", layer: "data", actor: "System · writeback", detail: "Pursued / won / lost / deferred feedback is written back as ground truth to improve future scoring.", writes: ["outreach_status", "outcome_label", "scoring_feedback"] },
     ],
     scenario: {
@@ -369,7 +369,7 @@ function ScreenVisual({ demo, step, sliderState, scenario }) {
   const vizConfig = {
     optimizer: { bars: optimizerBars(sliderState), gauge: scenario.outcome, max: 250, fill: "#ff3621", labelKey: "outcome", colors: ["#ff3621", "#ff8a76", "#1b3139"] },
     kyc: { bars: kycBars(sliderState), gauge: scenario.risk, max: 60, fill: "#2272b4", labelKey: "risk", colors: ["#2272b4", "#00a972", "#445e6b"] },
-    learfield: { bars: learfieldBars(sliderState), gauge: scenario.outcome, max: 100, fill: "#7c5cff", labelKey: "outcome", colors: ["#7c5cff", "#a78bff", "#4a93d6"] },
+    learfield: { bars: learfieldBars(sliderState), gauge: scenario.outcome, max: 100, fill: "#0a6cff", labelKey: "outcome", colors: ["#0a6cff", "#0b1726", "#8fb4e0"] },
   };
   const cfg = vizConfig[demo.id] || vizConfig.optimizer;
   const bars = cfg.bars;
@@ -592,7 +592,7 @@ function App() {
         {demos.some((d) => d.showcase) && (
           <section className="gallery showcase">
             <span className="section-label">Customer showcase</span>
-            <p className="section-note">A real customer scenario, framed as one of these apps — built from Learfield's business loops.</p>
+            <p className="section-note">A real customer scenario for LEARFIELD — “We Power Fan Connections” — framed as one of these apps and built from their sponsorship business loops.</p>
             <div className="gallery-grid">
               {demos.filter((d) => d.showcase).map((item) => renderTile(item))}
             </div>
